@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">MyCalendar</string>
+
+    <string name="search_icon_description">일정 검색</string>
+    <string name="add_schedule_button">일정 추가 버튼</string>
+
+    <string name="schedule_hint">일정 추가</string>
+
+    <string name="day_sun">일</string>
+    <string name="day_mon">월</string>
+    <string name="day_tue">화</string>
+    <string name="day_wed">수</string>
+    <string name="day_thu">목</string>
+    <string name="day_fri">금</string>
+    <string name="day_sat">토</string>
+</resources>
