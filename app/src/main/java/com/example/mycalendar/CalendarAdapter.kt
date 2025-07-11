@@ -1,44 +1,62 @@
 package com.example.mycalendar
 
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity // 👈 Gravity 임포트
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import java.time.LocalDate
 
 class CalendarAdapter(
-    private val dayList: ArrayList<String>,
-    private val onItemClicked: (String, Int) -> Unit // 클릭 이벤트를 처리할 함수
+    private val dayList: ArrayList<LocalDate>,
+    private val schedules: Map<LocalDate, List<Schedule>>,
+    private var selectedDate: LocalDate,
+    private val onItemClicked: (LocalDate) -> Unit
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
-
-    private var selectedPosition = -1
 
     inner class DayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val dayText: TextView = itemView.findViewById(R.id.dayText)
+        val scheduleText: TextView = itemView.findViewById(R.id.scheduleText)
+        val selectionView: View = itemView.findViewById(R.id.selectionView)
 
-        fun bind(day: String, position: Int) {
-            dayText.text = day
+        init {
+            // XML 대신 코드로 직접 gravity 설정!
+            dayText.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            dayText.setPadding(0, 16, 0, 0)
+        }
 
-            // 선택 상태에 따른 UI 변경
-            if (position == selectedPosition) {
-                dayText.setBackgroundResource(R.drawable.selected_day_background)
+        fun bind(date: LocalDate) {
+            dayText.text = date.dayOfMonth.toString()
+
+            // 선택 효과
+            if (date == selectedDate) {
+                selectionView.visibility = View.VISIBLE
                 dayText.setTextColor(Color.WHITE)
             } else {
-                dayText.background = null
-                dayText.setTextColor(Color.BLACK) // 기본 색상으로 되돌리기
+                selectionView.visibility = View.GONE
+                dayText.setTextColor(Color.BLACK)
             }
 
-            // 클릭 리스너 설정
-            itemView.setOnClickListener {
-                if (day.isNotEmpty()) {
-                    val oldPosition = selectedPosition
-                    selectedPosition = position
-                    notifyItemChanged(oldPosition) // 이전 선택 항목 갱신
-                    notifyItemChanged(position)   // 현재 선택 항목 갱신
-                    onItemClicked(day, position)
-                }
+            // 일정 바 표시
+            val dailySchedules = schedules[date]
+            if (!dailySchedules.isNullOrEmpty()) {
+                val firstSchedule = dailySchedules[0]
+                scheduleText.text = firstSchedule.title
+
+                val background = scheduleText.background.mutate() as GradientDrawable
+                background.setColor(firstSchedule.color)
+                scheduleText.background = background
+
+                scheduleText.visibility = View.VISIBLE
+            } else {
+                scheduleText.visibility = View.GONE
             }
+
+            itemView.setOnClickListener { onItemClicked(date) }
         }
     }
 
@@ -48,10 +66,13 @@ class CalendarAdapter(
     }
 
     override fun onBindViewHolder(holder: DayViewHolder, position: Int) {
-        holder.bind(dayList[position], position)
+        val date = dayList[position]
+        if (date != LocalDate.MIN) {
+            holder.bind(date)
+        } else {
+            holder.itemView.visibility = View.INVISIBLE
+        }
     }
 
-    override fun getItemCount(): Int {
-        return dayList.size
-    }
+    override fun getItemCount(): Int = dayList.size
 }
