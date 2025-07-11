@@ -18,7 +18,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="3월" />
+        tools:text="2025년 7월" />
 
     <ImageView
         android:id="@+id/searchButton"
@@ -40,23 +40,23 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:paddingVertical="8dp"
+        android:layout_marginTop="20dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/monthYearText">
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_sun"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_mon"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_tue"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_wed"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_thu"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_fri"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/day_sat"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_sun"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_mon"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_tue"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_wed"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_thu"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_fri"/>
+        <TextView style="@style/DayOfWeek" android:text="@string/day_sat"/>
     </LinearLayout>
 
-    <GridView
-        android:id="@+id/calendarGridView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/calendarRecyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:numColumns="7"
         app:layout_constraintBottom_toTopOf="@+id/scheduleInputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

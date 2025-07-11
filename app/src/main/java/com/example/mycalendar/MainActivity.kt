@@ -2,10 +2,13 @@ package com.example.mycalendar
 
 import android.os.Bundle
 import android.widget.EditText
-import android.widget.GridView
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -13,35 +16,30 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var monthYearText: TextView
-    private lateinit var calendarGridView: GridView
+    private lateinit var calendarRecyclerView: RecyclerView
     private lateinit var scheduleEditText: EditText
-    private lateinit var calendarAdapter: CalendarAdapter
     private lateinit var calendar: Calendar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // UI 요소들 연결
         monthYearText = findViewById(R.id.monthYearText)
-        calendarGridView = findViewById(R.id.calendarGridView)
+        calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
         scheduleEditText = findViewById(R.id.scheduleEditText)
+        val searchButton: ImageView = findViewById(R.id.searchButton)
+        val addButton: ImageButton = findViewById(R.id.addButton)
 
         calendar = Calendar.getInstance()
-
         updateCalendar()
 
-        // GridView의 날짜 클릭 이벤트 처리
-        calendarGridView.setOnItemClickListener { parent, view, position, id ->
-            val selectedDay = parent.getItemAtPosition(position) as String
-            if (selectedDay.isNotEmpty()) {
-                // 선택 효과 적용
-                calendarAdapter.setSelectedPosition(position)
-
-                // 하단 EditText의 hint 텍스트 업데이트
-                val monthFormat = SimpleDateFormat("M", Locale.KOREA)
-                val currentMonth = monthFormat.format(calendar.time)
-                scheduleEditText.hint = "${currentMonth}월 ${selectedDay}일 일정 추가"
-            }
+        // 버튼 클릭 리스너 (기능은 비워둠)
+        searchButton.setOnClickListener {
+            Toast.makeText(this, "검색 버튼 클릭됨", Toast.LENGTH_SHORT).show()
+        }
+        addButton.setOnClickListener {
+            Toast.makeText(this, "일정 추가 버튼 클릭됨", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -63,7 +61,16 @@ class MainActivity : AppCompatActivity() {
             dayList.add(i.toString())
         }
 
-        calendarAdapter = CalendarAdapter(this, dayList)
-        calendarGridView.adapter = calendarAdapter
+        // 어댑터를 생성할 때, 클릭 시 실행될 동작을 함께 전달
+        val adapter = CalendarAdapter(dayList) { day, position ->
+            // 하단 EditText의 hint 텍스트 업데이트
+            val monthFormat = SimpleDateFormat("M", Locale.KOREA)
+            val currentMonth = monthFormat.format(calendar.time)
+            scheduleEditText.hint = "${currentMonth}월 ${day}일 일정 추가"
+        }
+
+        // RecyclerView 설정
+        calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
+        calendarRecyclerView.adapter = adapter
     }
 }
