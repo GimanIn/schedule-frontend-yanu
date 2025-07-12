@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_year"
+        android:icon="@drawable/ic_year"
+        android:title="년" />
 
+    <item
+        android:id="@+id/nav_month"
+        android:icon="@drawable/ic_month"
+        android:title="월" />
+
+    <item
+        android:id="@+id/nav_day"
+        android:icon="@drawable/ic_day"
+        android:title="일" />
+
+    <item
+        android:id="@+id/nav_mypage"
+        android:icon="@drawable/ic_mypage"
+        android:title="마이페이지" />
 </menu>

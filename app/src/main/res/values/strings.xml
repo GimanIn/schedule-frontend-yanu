@@ -13,4 +13,7 @@
     <string name="day_thu">목</string>
     <string name="day_fri">금</string>
     <string name="day_sat">토</string>
+
+    <string name="navigation_drawer_open">메뉴 열기</string>
+    <string name="navigation_drawer_close">메뉴 닫기</string>
 </resources>
