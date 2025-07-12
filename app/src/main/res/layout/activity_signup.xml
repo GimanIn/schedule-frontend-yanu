@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:background="#F8F9FC">
+
+    <!-- 상단 뒤로가기 버튼(<-) -->
+    <ImageButton
+        android:id="@+id/backButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_back"
+        android:backgroud="@null"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- 제목: 회원가입 -->
+    <TextView
+        android:id="@+id/signupTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="회원가입"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/backButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5" />
+
+    <!-- 이름 입력 -->
+    <TextView
+        android:id="@+id/nameLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="사용자의 이름을 입력해주세요"
+        android:textSize="14sp"
+        app:layout_constraintTop_toBottomOf="@id/signupTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <EditText
+        android:id="@+id/editName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="ex.홍길동"
+        android:backgroundTint="#DDDDDD"
+        app:layout_constraintTop_toBottomOf="@id/nameLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 휴대폰 번호 -->
+    <TextView
+        android:id="@+id/phoneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="휴대폰 번호를 입력해주세요"
+        android:textSize="14sp"
+        app:layout_constraintTop_toBottomOf="@id/editName"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="24dp" />
+
+    <EditText
+        android:id="@+id/editPhone"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="ex.01012345678"
+        android:inputType="phone"
+        app:layout_constraintTop_toTopOf="@id/phoneLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/sendCodeButton"
+        app:layout_marginEnd="8dp" />
+
+    <Button
+        android:id="@+id/sendCodeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="인증번호 발송"
+        android:textSize="12sp"
+        app:layout_constraintTop_toTopOf="@id/editPhone"
+        app:layout_constraintBottom_toBottomOf="@id/editPhone"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 인증번호 입력 -->
+    <EditText
+        android:id="@+id/editCode"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="인증번호 입력"
+        android:inputTyp="number"
+        app:layout_constraintTop_toBottomOf="@id/editPhone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/verifyButton"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="8dp" />
+
+    <Button
+        android:id="@+id/verifyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="인증번호 확인"
+        android:textSize="12sp"
+        app:layout_constraintTop_toTopOf="@id/editCode"
+        app:layout_constraintBottom_toBottomOf="@id/editCode"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 약관 동의 -->
+    <CheckBox
+        android:id="@+id/checkAll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="전체 동의"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/editCode"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="24dp" />
+
+    <CheckBox
+        android:id="@+id/checkTerms"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="(필수) 이용약관"
+        app:layout_constraintTop_toBottomOf="@id/checkAll"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="12dp" />
+
+    <CheckBox
+        android:id="@+id/checkPrivacy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="(필수) 개인정보 수집 및 이용"
+        app:layout_constraintTop_toBottomOf="@id/checkTerms"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <CheckBox
+        android:id="@+id/checkPush"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="(선택) 맟춤ㅁ 푸쉬 알림 서비스 수신 동의"
+        app:layout_constraintTop_toBottomOf="@id/checkPrivacy"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- 다음 버튼 -->
+    <Button
+        android:id="@+id/nextButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="다음"
+        android:backgroundTint="#888DAA"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/checkPush"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
