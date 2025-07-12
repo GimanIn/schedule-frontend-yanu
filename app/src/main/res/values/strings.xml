@@ -25,4 +25,8 @@
     <string name="confirmed">확정</string>
     <string name="postponed">연기</string>
     <string name="close_button_description">닫기 버튼</string>
+
+    <string name="navigation_drawer_open">메뉴 열기</string>
+    <string name="navigation_drawer_close">메뉴 닫기</string>
+
 </resources>
