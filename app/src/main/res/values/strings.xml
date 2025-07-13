@@ -16,4 +16,15 @@
 
     <string name="navigation_drawer_open">메뉴 열기</string>
     <string name="navigation_drawer_close">메뉴 닫기</string>
+    <string name="title">제목</string>
+    <string name="set_time">시간 설정</string>
+    <string name="color">색상</string>
+    <string name="color_red">빨강</string>
+    <string name="color_blue">파랑</string>
+    <string name="color_green">초록</string>
+    <string name="set_alarm">알림 설정</string>
+    <string name="memo">메모</string>
+    <string name="confirmed">확정</string>
+    <string name="postponed">연기</string>
+    <string name="close_button_description">닫기 버튼</string>
 </resources>
