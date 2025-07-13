@@ -20,6 +20,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="#FFFFFF"
         android:theme="@style/ThemeOverlay.AppCompat.Light"
+        app:layout_constraintTop_toTopOf="parent"
         app:titleTextColor="@android:color/black"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
         app:navigationIcon="@drawable/ic_menu"
