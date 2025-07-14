@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다.
+        // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다. 수정함.
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
         toolbar = findViewById(R.id.toolbar) // 👈 여기서 toolbar가 초기화됩니다.
         calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
