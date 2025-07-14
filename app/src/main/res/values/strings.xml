@@ -14,8 +14,6 @@
     <string name="day_fri">금</string>
     <string name="day_sat">토</string>
 
-    <string name="navigation_drawer_open">메뉴 열기</string>
-    <string name="navigation_drawer_close">메뉴 닫기</string>
     <string name="title">제목</string>
     <string name="set_time">시간 설정</string>
     <string name="color">색상</string>
@@ -27,4 +25,8 @@
     <string name="confirmed">확정</string>
     <string name="postponed">연기</string>
     <string name="close_button_description">닫기 버튼</string>
+
+    <string name="navigation_drawer_open">메뉴 열기</string>
+    <string name="navigation_drawer_close">메뉴 닫기</string>
+
 </resources>
