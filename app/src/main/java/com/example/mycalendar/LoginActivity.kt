@@ -17,6 +17,8 @@ class LoginActivity : AppCompatActivity() {
         val findInfoText = findViewById<TextView>(R.id.txt_find_account)
         val autoLoginCheckbox = findViewById<CheckBox>(R.id.checkbox_autologin)
         val backButton = findViewById<ImageButton>(R.id.btn_back)
+        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        val autoLogin = prefs.getBoolean("auto_login", false)
 
         // 로그인 버튼 클릭
         loginButton.setOnClickListener{
@@ -55,8 +57,7 @@ class LoginActivity : AppCompatActivity() {
 
         // 아이디/비밀번호 찾기 클릭
         findInfoText.setOnClickListener {
-            val intent = Intent(this, SignupActivity::class.java)
-            startActivity(intent)
+            Toast.makeText(this, "아이디/비밀번호 찾기 기능은 준비 중입니다.", Toast.LENGTH_SHORT).show()
         }
 
         // 뒤로가기 버튼 클릭
