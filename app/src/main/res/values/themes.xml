@@ -1,5 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.MyCalendarApp" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.MyCalendarApp" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- 배경을 흰색으로 설정 -->
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
 
     <style name="DayTextStyle">
@@ -15,6 +17,5 @@
         <item name="android:textColor">@android:color/darker_gray</item>
         <item name="android:textSize">14sp</item>
     </style>
-
 
 </resources>
