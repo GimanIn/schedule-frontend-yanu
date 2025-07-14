@@ -28,6 +28,32 @@ package com.example.mycalendar
     import java.util.Locale
     import androidx.drawerlayout.widget.DrawerLayout
     import androidx.appcompat.widget.Toolbar
+    import android.app.TimePickerDialog
+    import android.graphics.Color
+    import android.os.Bundle
+    import android.view.View
+    import android.widget.EditText
+    import android.widget.ImageButton
+    import android.widget.ImageView
+    import android.widget.LinearLayout
+    import android.widget.RadioButton
+    import android.widget.RadioGroup
+    import android.widget.TextView
+    import android.widget.Toast
+    import androidx.appcompat.app.ActionBarDrawerToggle
+    import androidx.appcompat.app.AlertDialog
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.graphics.toColorInt
+    import androidx.recyclerview.widget.GridLayoutManager
+    import androidx.recyclerview.widget.RecyclerView
+    import com.google.android.material.switchmaterial.SwitchMaterial
+    import java.time.LocalDate
+    import java.time.LocalTime
+    import java.time.YearMonth
+    import java.time.format.DateTimeFormatter
+    import java.util.Locale
+    import androidx.drawerlayout.widget.DrawerLayout
+    import androidx.appcompat.widget.Toolbar
 
     class MainActivity : AppCompatActivity() {
 
@@ -36,6 +62,12 @@ package com.example.mycalendar
         private lateinit var scheduleEditText: EditText
 
         private val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
+        private var selectedDate: LocalDate = LocalDate.now()
+        private lateinit var calendarRecyclerView: RecyclerView
+        private lateinit var scheduleEditText: EditText
+        private lateinit var toolbar: Toolbar
+
+        val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
         private var selectedDate: LocalDate = LocalDate.now()
 
         override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +98,48 @@ package com.example.mycalendar
 
             findViewById<ImageView>(R.id.searchButton).setOnClickListener {
                 Toast.makeText(this, "검색 기능 구현 예정", Toast.LENGTH_SHORT).show()
+
+        // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다.
+        val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
+        toolbar = findViewById(R.id.toolbar) // 👈 여기서 toolbar가 초기화됩니다.
+        calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
+        scheduleEditText = findViewById(R.id.scheduleEditText)
+        val addButton: ImageButton = findViewById(R.id.addButton)
+        val searchButton: ImageView = findViewById(R.id.searchButton)
+
+        // 2. Toolbar 관련 설정을 합니다.
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
+
+        val toggle = ActionBarDrawerToggle(
+            this, drawerLayout, toolbar,
+            R.string.navigation_drawer_open, R.string.navigation_drawer_close
+        )
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        // 3. 버튼 리스너들을 설정합니다.
+        searchButton.setOnClickListener {
+            Toast.makeText(this, "검색 기능 구현 예정", Toast.LENGTH_SHORT).show()
+        }
+
+        addButton.setOnClickListener {
+            val scheduleTitle = scheduleEditText.text.toString()
+            if (scheduleTitle.isNotEmpty()) {
+                val newSchedule = Schedule(
+                    title = scheduleTitle,
+                    startTime = null,
+                    endTime = null,
+                    color = Color.GRAY,
+                    isAlarmOn = false,
+                    memo = "",
+                    isConfirmed = true,
+                    isPostponed = false
+                )
+                addSchedule(selectedDate, newSchedule)
+                scheduleEditText.text.clear()
+            } else {
+                showAddScheduleDialog(selectedDate)
             }
 
             addButton.setOnClickListener {
@@ -86,6 +160,29 @@ package com.example.mycalendar
                 } else {
                     showAddScheduleDialog(selectedDate)
                 }
+
+        // 4. 모든 설정이 끝난 후, 마지막에 캘린더를 업데이트합니다.
+        updateCalendar()
+    }
+
+    private fun updateCalendar() {
+        // 제목을 Toolbar에 직접 설정
+        toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
+
+        val dayList = generateDaysInMonth(YearMonth.from(selectedDate))
+        val adapter = CalendarAdapter(dayList, schedules, selectedDate) { date ->
+            val oldSelectedDate = selectedDate
+            selectedDate = date
+
+            if (selectedDate == oldSelectedDate) {
+                val dailySchedules = schedules[date]
+                if (!dailySchedules.isNullOrEmpty()) {
+                    showScheduleListDialog(date, dailySchedules)
+                } else {
+                    showAddScheduleDialog(date)
+                }
+            } else {
+                updateCalendar()
             }
 
             updateCalendar()
@@ -106,9 +203,84 @@ package com.example.mycalendar
                 } else {
                     selectedDate = date
                     updateCalendar()
+        calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
+        calendarRecyclerView.adapter = adapter
+        updateScheduleHint(selectedDate)
+    }
+
+    private fun generateDaysInMonth(yearMonth: YearMonth): ArrayList<LocalDate> {
+        val dayList = ArrayList<LocalDate>()
+        val firstDayOfMonth = yearMonth.atDay(1)
+        val dayOfWeekOfFirst = firstDayOfMonth.dayOfWeek.value % 7
+
+        for (i in 0 until dayOfWeekOfFirst) { dayList.add(LocalDate.MIN) }
+        for (i in 1..yearMonth.lengthOfMonth()) { dayList.add(yearMonth.atDay(i)) }
+        return dayList
+    }
+
+    private fun updateScheduleHint(date: LocalDate) {
+        val hintFormatter = DateTimeFormatter.ofPattern("M월 d일 일정 추가", Locale.KOREA)
+        scheduleEditText.hint = hintFormatter.format(date)
+    }
+
+    fun addSchedule(date: LocalDate, schedule: Schedule) {
+        schedules.computeIfAbsent(date) { mutableListOf() }.add(schedule)
+        updateCalendar()
+    }
+
+    fun showAddScheduleDialog(date: LocalDate) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_add_schedule, null)
+        val titleEditText = dialogView.findViewById<EditText>(R.id.titleEditText)
+        val timeSwitch = dialogView.findViewById<SwitchMaterial>(R.id.timeSwitch)
+        val timeLayout = dialogView.findViewById<LinearLayout>(R.id.timeLayout)
+        val startTimeLayout = dialogView.findViewById<View>(R.id.startTimeLayout)
+        val endTimeLayout = dialogView.findViewById<View>(R.id.endTimeLayout)
+        val startTimeText = dialogView.findViewById<TextView>(R.id.startTimeText)
+        val endTimeText = dialogView.findViewById<TextView>(R.id.endTimeText)
+        val colorRadioGroup = dialogView.findViewById<RadioGroup>(R.id.colorRadioGroup)
+        val alarmSwitch = dialogView.findViewById<SwitchMaterial>(R.id.alarmSwitch)
+        val memoEditText = dialogView.findViewById<EditText>(R.id.memoEditText)
+        val confirmSwitch = dialogView.findViewById<SwitchMaterial>(R.id.confirmSwitch)
+        val postponeSwitch = dialogView.findViewById<SwitchMaterial>(R.id.postponeSwitch)
+
+        var startTime: LocalTime? = LocalTime.of(9, 0)
+        var endTime: LocalTime? = LocalTime.of(10, 0)
+
+        timeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            timeLayout.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        // 시작 시간 레이아웃 클릭 시
+        startTimeLayout.setOnClickListener {
+            // 스피너 스타일 테마를 직접 지정하여 TimePickerDialog 생성
+            val timePickerDialog = TimePickerDialog(this, android.R.style.Theme_Holo_Light_Dialog_NoActionBar, { _, hour, minute ->
+                startTime = LocalTime.of(hour, minute)
+                startTimeText.text = startTime?.format(DateTimeFormatter.ofPattern("HH:mm"))
+            }, startTime?.hour ?: 9, startTime?.minute ?: 0, true)
+            // 윈도우 배경을 투명하게 하여 테마가 깨지지 않도록 함
+            timePickerDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            timePickerDialog.show()
+        }
+
+        // 종료 시간 레이아웃 클릭 시
+        endTimeLayout.setOnClickListener {
+            val timePickerDialog = TimePickerDialog(this, android.R.style.Theme_Holo_Light_Dialog_NoActionBar, { _, hour, minute ->
+                endTime = LocalTime.of(hour, minute)
+                endTimeText.text = endTime?.format(DateTimeFormatter.ofPattern("HH:mm"))
+            }, endTime?.hour ?: 10, endTime?.minute ?: 0, true)
+            timePickerDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            timePickerDialog.show()
+        }
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("저장") { _, _ ->
+                val title = titleEditText.text.toString()
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "제목을 입력해주세요.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
                 }
             }
-
             calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
             calendarRecyclerView.adapter = adapter
             updateScheduleHint(selectedDate)
@@ -243,3 +415,10 @@ package com.example.mycalendar
             dialog.show()
         }
     }
+    private fun showScheduleListDialog(date: LocalDate, scheduleList: List<Schedule>) {
+        val dialog = ScheduleListDialog(date) {
+            updateCalendar()
+        }
+        dialog.show(supportFragmentManager, "ScheduleListDialog")
+    }
+}
