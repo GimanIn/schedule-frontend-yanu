@@ -4,7 +4,6 @@ import android.app.TimePickerDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -12,7 +11,6 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
-import android.widget.TimePicker
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
@@ -31,40 +29,38 @@ import androidx.appcompat.widget.Toolbar
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var monthYearText: TextView
     private lateinit var calendarRecyclerView: RecyclerView
     private lateinit var scheduleEditText: EditText
+    private lateinit var toolbar: Toolbar
 
-    private val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
+    val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
     private var selectedDate: LocalDate = LocalDate.now()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다.
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
+        toolbar = findViewById(R.id.toolbar) // 👈 여기서 toolbar가 초기화됩니다.
+        calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
+        scheduleEditText = findViewById(R.id.scheduleEditText)
+        val addButton: ImageButton = findViewById(R.id.addButton)
+        val searchButton: ImageView = findViewById(R.id.searchButton)
 
+        // 2. Toolbar 관련 설정을 합니다.
+        setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
         val toggle = ActionBarDrawerToggle(
-            this,
-            drawerLayout,
-            toolbar,
-            R.string.navigation_drawer_open,
-            R.string.navigation_drawer_close
+            this, drawerLayout, toolbar,
+            R.string.navigation_drawer_open, R.string.navigation_drawer_close
         )
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
 
-
-        monthYearText = findViewById(R.id.monthYearText)
-        calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
-        scheduleEditText = findViewById(R.id.scheduleEditText)
-        val addButton: ImageButton = findViewById(R.id.addButton)
-
-        findViewById<ImageView>(R.id.searchButton).setOnClickListener {
+        // 3. 버튼 리스너들을 설정합니다.
+        searchButton.setOnClickListener {
             Toast.makeText(this, "검색 기능 구현 예정", Toast.LENGTH_SHORT).show()
         }
 
@@ -88,27 +84,30 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // 4. 모든 설정이 끝난 후, 마지막에 캘린더를 업데이트합니다.
         updateCalendar()
     }
 
     private fun updateCalendar() {
-        monthYearText.text = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
-        val dayList = generateDaysInMonth(YearMonth.from(selectedDate))
+        // 제목을 Toolbar에 직접 설정
+        toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
 
+        val dayList = generateDaysInMonth(YearMonth.from(selectedDate))
         val adapter = CalendarAdapter(dayList, schedules, selectedDate) { date ->
-            if (selectedDate == date) {
+            val oldSelectedDate = selectedDate
+            selectedDate = date
+
+            if (selectedDate == oldSelectedDate) {
                 val dailySchedules = schedules[date]
-                if (dailySchedules.isNullOrEmpty()) {
-                    showAddScheduleDialog(date)
-                } else {
+                if (!dailySchedules.isNullOrEmpty()) {
                     showScheduleListDialog(date, dailySchedules)
+                } else {
+                    showAddScheduleDialog(date)
                 }
             } else {
-                selectedDate = date
                 updateCalendar()
             }
         }
-
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
         calendarRecyclerView.adapter = adapter
         updateScheduleHint(selectedDate)
@@ -129,12 +128,12 @@ class MainActivity : AppCompatActivity() {
         scheduleEditText.hint = hintFormatter.format(date)
     }
 
-    private fun addSchedule(date: LocalDate, schedule: Schedule) {
+    fun addSchedule(date: LocalDate, schedule: Schedule) {
         schedules.computeIfAbsent(date) { mutableListOf() }.add(schedule)
         updateCalendar()
     }
 
-    private fun showAddScheduleDialog(date: LocalDate) {
+    fun showAddScheduleDialog(date: LocalDate) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_schedule, null)
         val titleEditText = dialogView.findViewById<EditText>(R.id.titleEditText)
         val timeSwitch = dialogView.findViewById<SwitchMaterial>(R.id.timeSwitch)
@@ -216,30 +215,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showScheduleListDialog(date: LocalDate, scheduleList: List<Schedule>) {
-        val items = scheduleList.map {
-            val timeString = if(it.startTime != null && it.endTime != null) {
-                "${it.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${it.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-            } else ""
-            "${it.title} $timeString"
-        }.toTypedArray()
-
-        // 커스텀 타이틀 뷰 설정
-        val titleView = layoutInflater.inflate(R.layout.dialog_title_with_close, null)
-        titleView.findViewById<TextView>(R.id.titleTextView).text = "${date.monthValue}월 ${date.dayOfMonth}일 일정 목록"
-
-        val dialog = AlertDialog.Builder(this)
-            .setCustomTitle(titleView)
-            .setItems(items, null)
-            // .setPositiveButton("닫기", null) // 👈 이 줄을 삭제했습니다.
-            .setPositiveButton("일정 추가") { _, _ -> // 👈 Neutral을 Positive로 변경하여 오른쪽으로 이동
-                showAddScheduleDialog(date)
-            }
-            .create()
-
-        titleView.findViewById<ImageButton>(R.id.closeButton).setOnClickListener {
-            dialog.dismiss() // 'X' 버튼 클릭 시 닫기
+        val dialog = ScheduleListDialog(date) {
+            updateCalendar()
         }
-
-        dialog.show()
+        dialog.show(supportFragmentManager, "ScheduleListDialog")
     }
 }

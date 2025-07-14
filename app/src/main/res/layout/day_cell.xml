@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="80dp"
+    android:layout_height="110dp"
     android:background="?attr/selectableItemBackground">
 
     <View
@@ -13,36 +13,26 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="4dp"
         android:background="@drawable/selected_day_background"
-        android:visibility="gone"
-        tools:visibility="visible"/>
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/dayText"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="4dp"
-        android:gravity="center"
+        android:layout_marginTop="12dp"
         android:textColor="@android:color/black"
         android:textSize="14sp"
         tools:text="22" />
 
-    <TextView
-        android:id="@+id/scheduleText"
+    <LinearLayout
+        android:id="@+id/scheduleContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginHorizontal="2dp"
-        android:layout_marginBottom="4dp"
-        android:background="@drawable/schedule_bar_background"
-        android:gravity="center"
-        android:paddingVertical="2dp"
-        android:singleLine="true"
-        android:textColor="@android:color/black"
-        android:textSize="10sp"
-        android:visibility="gone"
-        tools:text="팀 회의"
-        tools:visibility="visible" />
+        android:layout_below="@id/dayText"
+        android:layout_marginTop="2dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"/>
 
 </RelativeLayout>
