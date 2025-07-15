@@ -1,5 +1,6 @@
 package com.example.mycalendar
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.text.Editable
@@ -175,7 +176,21 @@ class SignupActivity : AppCompatActivity() {
             updateAllCheckbox()
             updateNextButton(cbTerms, cbPrivacy, btnNext)
         }
+        btnNext.setOnClickListener {
+            if (isVerified && cbTerms.isChecked && cbPrivacy.isChecked) {
+                val name = etName.text.toString()
+                val phone = etPhone.text.toString()
+                val intent = Intent(this, SignupActivity2::class.java).apply {
+                    putExtra("name", name)
+                    putExtra("phone", phone)
+                }
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "모든 항목을 확인해주세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
+
     // 다음 버튼 활성화 조건 확인
     private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: Button) {
         val enabled = isVerified && cbTerms.isChecked && cbPrivacy.isChecked
