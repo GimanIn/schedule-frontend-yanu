@@ -24,12 +24,13 @@ class ScheduleListAdapter(
 
             val formatter = DateTimeFormatter.ofPattern("HH:mm")
 
-            if (schedule.startTime != null) {
-                timeText.text = schedule.startTime.format(formatter)
+            // schedule.startTime과 schedule.endTime을 모두 새 변수 이름으로 변경합니다.
+            if (schedule.startDateTime != null) {
+                timeText.text = schedule.startDateTime.format(formatter)
                 timeText.visibility = View.VISIBLE
 
-                if (schedule.endTime != null) {
-                    timeRangeText.text = "${schedule.startTime.format(formatter)} - ${schedule.endTime.format(formatter)}"
+                if (schedule.endDateTime != null) {
+                    timeRangeText.text = "${schedule.startDateTime.format(formatter)} - ${schedule.endDateTime.format(formatter)}"
                     timeRangeText.visibility = View.VISIBLE
                 } else {
                     timeRangeText.visibility = View.GONE
