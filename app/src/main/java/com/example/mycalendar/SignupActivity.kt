@@ -1,5 +1,6 @@
 package com.example.mycalendar
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.text.Editable
@@ -174,6 +175,16 @@ class SignupActivity : AppCompatActivity() {
         cbPrivacy.setOnCheckedChangeListener { _, _ ->
             updateAllCheckbox()
             updateNextButton(cbTerms, cbPrivacy, btnNext)
+        }
+        btnNext.setOnClickListener {
+            val name = etName.text.toString()
+            val phone = etPhone.text.toString()
+
+            val intent = Intent(this, SignupActivity2::class.java)
+            intent.putExtra("name", name)
+            intent.putExtra("phone", phone)
+
+            startActivity(intent)
         }
     }
     // 다음 버튼 활성화 조건 확인
