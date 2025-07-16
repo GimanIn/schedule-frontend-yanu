@@ -3,6 +3,7 @@
 
     <string name="search_icon_description">일정 검색</string>
     <string name="add_schedule_button">일정 추가 버튼</string>
+    <string name="add_schedule">일정 추가</string>
 
     <string name="schedule_hint">일정 추가</string>
     <string name="add_schedule_title">일정 추가</string>

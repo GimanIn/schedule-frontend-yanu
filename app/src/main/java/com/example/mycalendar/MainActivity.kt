@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupCalendar() {
         adapter = CalendarAdapter(ArrayList(), schedules) { date ->
-            // --- 여기가 모든 날짜 클릭 로직을 담당합니다 (수정된 최종 버전) ---
+            // --- 여기가 모든 날짜 클릭 로직을 담당하는 최종 버전입니다 ---
 
             // Case 2: 이미 선택된 날짜를 다시 클릭했을 경우 (동작)
             if (selectedDate == date) {
@@ -127,16 +127,18 @@ class MainActivity : AppCompatActivity() {
                     openAddScheduleActivity(date)
                 } else {
                     // 일정이 있으면 -> 일정 목록 다이얼로그 열기
-                    val dialog = ScheduleListDialog(date, dailySchedules.toMutableList()) {
+                    val dialog = ScheduleListDialog(date, dailySchedules.toMutableList(), {
                         updateCalendar()
-                    }
+                    }, { clickedDate ->
+                        openAddScheduleActivity(clickedDate)
+                    })
                     dialog.show(supportFragmentManager, "ScheduleListDialog")
                 }
             }
             // Case 1: 새로운 날짜를 클릭했을 경우 (선택)
             else {
                 selectedDate = date
-                updateCalendar() // 선택 상태를 갱신하기 위해 달력 전체를 새로고침
+                updateCalendar() // 선택 상태를 갱신하고 하단 바 텍스트를 바꾸기 위해 갱신
             }
         }
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
@@ -198,6 +200,10 @@ class MainActivity : AppCompatActivity() {
                 currentDate = currentDate.plusDays(1)
             }
         }
+        // --- 디버깅을 위한 코드 ---
+        val count = schedules[startDate]?.size ?: 0
+        Toast.makeText(this, "${startDate.dayOfMonth}일에 이제 ${count}개의 일정이 있습니다.", Toast.LENGTH_SHORT).show()
+        // --- 여기까지 ---
         updateCalendar()
     }
 
