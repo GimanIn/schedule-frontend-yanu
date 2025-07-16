@@ -82,16 +82,35 @@
         app:layout_constraintTop_toTopOf="@+id/editTextId" />
 
     <!-- 아이디 경고 메시지 -->
-    <TextView
+    <LinearLayout
         android:id="@+id/id_warning"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="중복 확인 메시지"
-        android:textSize="10sp"
+        android:orientation="horizontal"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/editTextId"
         app:layout_constraintStart_toStartOf="@id/editTextId"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/icon_id"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginEnd="4dp"
+            android:src="@drawable/ic_warning"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/text_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="중복 확인 메시지"
+            android:textSize="10sp"
+            android:textColor="@android:color/darker_gray"
+            android:includeFontPadding="false"
+            android:baselineAligned="true"/>
+    </LinearLayout>
 
     <!-- '사용할 비밀번호를 입력해주세요' -->
     <TextView
@@ -139,16 +158,35 @@
     </LinearLayout>
 
     <!-- 비밀번호 경고 메시지 -->
-    <TextView
-        android:id="@+id/pw_warning_text"
+    <LinearLayout
+        android:id="@+id/pw_warning"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="비밀번호 입력 메시지"
-        android:textSize="10sp"
+        android:orientation="horizontal"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/input_password"
         app:layout_constraintStart_toStartOf="@id/input_password"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/icon_pw"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginEnd="4dp"
+            android:src="@drawable/ic_warning"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/text_pw"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="비밀번호 입력 메시지"
+            android:textSize="10sp"
+            android:textColor="@android:color/darker_gray"
+            android:includeFontPadding="false"
+            android:baselineAligned="true"/>
+    </LinearLayout>
 
     <!-- '다시 한 번 입력해주세요' -->
     <TextView
@@ -220,6 +258,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_margin="16dp" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

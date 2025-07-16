@@ -56,7 +56,7 @@ class SignupActivity2 : AppCompatActivity() {
 
         editTextPw = findViewById(R.id.btn_newpassword)
         togglePw = findViewById(R.id.toggle_password)
-        pwWarning = findViewById(R.id.pw_warning_text)
+        pwWarning = findViewById(R.id.pw_warning)
 
         editTextPwConfirm = findViewById(R.id.btn_re_password)
         togglePwConfirm = findViewById(R.id.toggle_password2)

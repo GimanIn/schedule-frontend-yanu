@@ -177,20 +177,16 @@ class SignupActivity : AppCompatActivity() {
             updateNextButton(cbTerms, cbPrivacy, btnNext)
         }
         btnNext.setOnClickListener {
-            if (isVerified && cbTerms.isChecked && cbPrivacy.isChecked) {
-                val name = etName.text.toString()
-                val phone = etPhone.text.toString()
-                val intent = Intent(this, SignupActivity2::class.java).apply {
-                    putExtra("name", name)
-                    putExtra("phone", phone)
-                }
-                startActivity(intent)
-            } else {
-                Toast.makeText(this, "모든 항목을 확인해주세요.", Toast.LENGTH_SHORT).show()
-            }
+            val name = etName.text.toString()
+            val phone = etPhone.text.toString()
+
+            val intent = Intent(this, SignupActivity2::class.java)
+            intent.putExtra("name", name)
+            intent.putExtra("phone", phone)
+
+            startActivity(intent)
         }
     }
-
     // 다음 버튼 활성화 조건 확인
     private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: Button) {
         val enabled = isVerified && cbTerms.isChecked && cbPrivacy.isChecked
