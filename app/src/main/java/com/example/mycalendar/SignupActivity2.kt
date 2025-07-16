@@ -1,6 +1,5 @@
 package com.example.mycalendar
 
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
