@@ -35,20 +35,26 @@ class CalendarAdapter(
             holder.dayText.text = date.dayOfMonth.toString()
             holder.itemView.visibility = View.VISIBLE
 
-            // UI 초기화
+            // --- UI 상태 초기화 ---
             holder.dayText.setTextColor(Color.BLACK)
-            holder.itemView.setBackgroundColor(Color.TRANSPARENT)
+            holder.dayText.background = null
+            holder.itemView.background = null // itemView의 배경도 초기화
 
-            // 오늘 날짜
-            if (date == LocalDate.now()) {
-                holder.dayText.setTextColor(Color.BLUE)
-            }
-            // 선택된 날짜
+            // --- 상태에 따라 UI 변경 (수정된 최종 로직) ---
+
+            // 1. 선택된 날짜일 경우 -> 테두리 표시
             if (date == selectedDate) {
-                holder.itemView.setBackgroundColor(Color.parseColor("#E0E0E0"))
+                holder.itemView.setBackgroundResource(R.drawable.selected_day_border)
             }
 
-            // 일정 바 그리기
+            // 2. 오늘 날짜일 경우 -> 파란 동그라미와 흰색 글씨
+            if (date == LocalDate.now()) {
+                holder.dayText.setBackgroundResource(R.drawable.selected_day_background)
+                holder.dayText.setTextColor(Color.WHITE)
+            }
+
+
+            // --- 일정 바 그리는 로직 (기존과 동일) ---
             holder.scheduleContainer.removeAllViews()
             schedules[date]?.take(2)?.forEach { schedule ->
                 val scheduleView = TextView(holder.itemView.context).apply {
@@ -71,7 +77,7 @@ class CalendarAdapter(
                 holder.scheduleContainer.addView(scheduleView)
             }
 
-            // 클릭 이벤트는 MainActivity로 전달만 함
+            // 클릭 이벤트는 MainActivity로 전달
             holder.itemView.setOnClickListener { onItemClicked(date) }
 
         } else {

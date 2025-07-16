@@ -1,86 +1,197 @@
 package com.example.mycalendar
 
+import android.app.AlertDialog
 import android.content.DialogInterface
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-// 생성자에서 mainActivity 대신 일정 목록을 직접 받도록 수정
 class ScheduleListDialog(
     private val date: LocalDate,
     private val dailySchedules: MutableList<Schedule>,
-    private val onDataChanged: () -> Unit
+    private val onDataChanged: () -> Unit,
+    private val onAddNewSchedule: (LocalDate) -> Unit
 ) : DialogFragment() {
 
-    private lateinit var scheduleListAdapter: ScheduleListAdapter
+    // --- 수정됨: 불필요한 변수들 최종 삭제 ---
+    private lateinit var listViewContainer: View
+    private lateinit var detailViewContainer: View
+    private lateinit var titleTextView: TextView
+    private lateinit var scheduleListRecyclerView: RecyclerView
+    private lateinit var scheduleEditTextDialog: EditText
+    private lateinit var addButtonDialog: ImageButton
+    private lateinit var backToListButton: ImageButton
+    private lateinit var detailDateText: TextView
+    private lateinit var detailMemoText: TextView
+    private lateinit var deleteButton: Button
+    private lateinit var hoursContainer: LinearLayout
+    private lateinit var scheduleBlocksContainer: FrameLayout
+    private val hourHeightDp = 60 // 시간당 높이를 60dp로 정의
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_schedule_list, container, false)
+        initViews(view)
+        setupListView()
+        setupDetailViewListeners()
+        return view
+    }
 
-        val titleTextView = view.findViewById<TextView>(R.id.titleTextView)
-        val closeButton = view.findViewById<ImageButton>(R.id.closeButton)
-        val recyclerView = view.findViewById<RecyclerView>(R.id.scheduleListRecyclerView)
-        val scheduleEditTextDialog = view.findViewById<EditText>(R.id.scheduleEditTextDialog)
-        val addButtonDialog = view.findViewById<ImageButton>(R.id.addButtonDialog)
+    private fun initViews(view: View) {
+        listViewContainer = view.findViewById(R.id.listViewContainer)
+        detailViewContainer = view.findViewById(R.id.detailViewContainer)
+        titleTextView = view.findViewById(R.id.titleTextView)
+        scheduleListRecyclerView = view.findViewById(R.id.scheduleListRecyclerView)
+        scheduleEditTextDialog = view.findViewById(R.id.scheduleEditTextDialog)
+        addButtonDialog = view.findViewById(R.id.addButtonDialog)
+        backToListButton = view.findViewById(R.id.backToListButton)
+        detailDateText = view.findViewById(R.id.detailDateText)
+        detailMemoText = view.findViewById(R.id.detailMemoText)
+        deleteButton = view.findViewById(R.id.deleteButton)
+        hoursContainer = view.findViewById(R.id.hoursContainer)
+        scheduleBlocksContainer = view.findViewById(R.id.scheduleBlocksContainer)
+    }
 
+    private fun setupListView() {
         val dayOfWeek = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREA)
         titleTextView.text = "${date.dayOfMonth} ${dayOfWeek}"
         scheduleEditTextDialog.hint = "${date.monthValue}월 ${date.dayOfMonth}일에 추가"
 
-        closeButton.setOnClickListener { dismiss() }
-
-        // 어댑터에 일정 목록 전달
-        scheduleListAdapter = ScheduleListAdapter(dailySchedules) { schedule ->
-            Toast.makeText(context, "'${schedule.title}' 수정 기능은 구현 예정입니다.", Toast.LENGTH_SHORT).show()
+        val scheduleListAdapter = ScheduleListAdapter(dailySchedules) { schedule ->
+            showDetailView(schedule)
         }
-        recyclerView.layoutManager = LinearLayoutManager(context)
-        recyclerView.adapter = scheduleListAdapter
+        scheduleListRecyclerView.layoutManager = LinearLayoutManager(context)
+        scheduleListRecyclerView.adapter = scheduleListAdapter
 
         addButtonDialog.setOnClickListener {
             val title = scheduleEditTextDialog.text.toString()
             if (title.isNotEmpty()) {
                 val newSchedule = Schedule(title, null, null, Color.GRAY, false, "", true, false)
-
-                // MainActivity의 public 함수를 통해 일정 추가 요청
                 (activity as? MainActivity)?.addSchedule(date, newSchedule)
-
-                // 현재 다이얼로그의 목록에도 추가하고 화면 갱신
                 dailySchedules.add(newSchedule)
                 scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
                 scheduleEditTextDialog.text.clear()
             } else {
-                // 아무것도 입력하지 않고 + 누르면 AddScheduleActivity 열기
-                val intent = Intent(context, AddScheduleActivity::class.java)
-                intent.putExtra("selectedDate", date)
-                context?.startActivity(intent)
+                onAddNewSchedule(date)
                 dismiss()
             }
         }
+    }
 
-        return view
+    private fun setupDetailViewListeners() {
+        backToListButton.setOnClickListener {
+            listViewContainer.visibility = View.VISIBLE
+            detailViewContainer.visibility = View.GONE
+        }
+    }
+
+    private fun showDetailView(schedule: Schedule) {
+        listViewContainer.visibility = View.GONE
+        detailViewContainer.visibility = View.VISIBLE
+
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
+        detailDateText.text = date.format(dateFormatter)
+        detailMemoText.text = schedule.memo
+
+        populateTimeline()
+        addScheduleBlockToTimeline(schedule)
+
+        deleteButton.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle("일정 삭제")
+                .setMessage("'${schedule.title}' 일정을 삭제하시겠습니까?")
+                .setPositiveButton("삭제") { _, _ ->
+                    Toast.makeText(context, "삭제 기능 구현 필요", Toast.LENGTH_SHORT).show()
+                    listViewContainer.visibility = View.VISIBLE
+                    detailViewContainer.visibility = View.GONE
+                }
+                .setNegativeButton("취소", null)
+                .show()
+        }
+    }
+
+    private fun populateTimeline() {
+        hoursContainer.removeAllViews()
+        val inflater = LayoutInflater.from(context)
+        for (hour in 0..23) {
+            val hourLineView = inflater.inflate(R.layout.item_hour_line, hoursContainer, false)
+            val hourTextView = hourLineView.findViewById<TextView>(R.id.hourTextView)
+            hourTextView.text = String.format("%02d:00", hour)
+            hoursContainer.addView(hourLineView)
+        }
+    }
+
+    private fun addScheduleBlockToTimeline(schedule: Schedule) {
+        scheduleBlocksContainer.removeAllViews()
+
+        val startHour = schedule.startDateTime?.hour ?: 0
+        val startMinute = schedule.startDateTime?.minute ?: 0
+        val endHour = schedule.endDateTime?.hour ?: 24
+        val endMinute = schedule.endDateTime?.minute ?: 0
+        val startTotalHours = startHour + startMinute / 60.0
+        var endTotalHours = endHour + endMinute / 60.0
+        if (endTotalHours == 0.0 && schedule.endDateTime != null) {
+            endTotalHours = 24.0
+        }
+        val durationHours = endTotalHours - startTotalHours
+        if (durationHours <= 0) return
+
+        val density = resources.displayMetrics.density
+        val hourHeightPx = (hourHeightDp * density).toInt()
+        val topMargin = (startTotalHours * hourHeightPx).toInt()
+        val height = (durationHours * hourHeightPx).toInt()
+
+        val inflater = LayoutInflater.from(context)
+        val scheduleBlockView = inflater.inflate(R.layout.item_schedule_block, scheduleBlocksContainer, false) as LinearLayout
+
+        // --- 수정됨: 블록 내부의 View들을 여기서 찾아서 사용합니다. ---
+        val blockTitleText = scheduleBlockView.findViewById<TextView>(R.id.blockTitleText)
+        val blockTimeText = scheduleBlockView.findViewById<TextView>(R.id.blockTimeText)
+
+        blockTitleText.text = schedule.title
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+        if (schedule.startDateTime != null && schedule.endDateTime != null) {
+            blockTimeText.text = "${schedule.startDateTime.format(timeFormatter)} - ${schedule.endDateTime.format(timeFormatter)}"
+        } else {
+            blockTimeText.text = "하루 종일"
+        }
+
+        (scheduleBlockView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+        val params = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, height)
+        params.topMargin = topMargin
+
+        scheduleBlocksContainer.addView(scheduleBlockView, params)
     }
 
     override fun onStart() {
         super.onStart()
-        dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog?.window?.let { window ->
+            val displayMetrics = resources.displayMetrics
+            val height = (displayMetrics.heightPixels * 0.7).toInt()
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
     }
 
-    // 다이얼로그가 닫힐 때 MainActivity에 데이터가 변경되었음을 알림
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
         onDataChanged()
