@@ -64,7 +64,7 @@ class SignupActivity2 : AppCompatActivity() {
         }
         btnCheckId.setOnClickListener {
             val id = editTextId.text.toString()
-            // 임시 중복 리스트: 나중에 서버 연동하면 이 부분 변경
+            // 임시 중복 리스트
             val duplicatedIds = listOf("aaa123", "user01", "test123")
             val isDuplicated = id in duplicatedIds
 
