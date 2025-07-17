@@ -42,7 +42,7 @@ class SignupActivity2 : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_signup2) // XML 화면 연결
 
-        // 📌 모든 뷰와 연결
+        // 모든 뷰와 연결
         initViews()
 
         // 아이디 입력 감지
