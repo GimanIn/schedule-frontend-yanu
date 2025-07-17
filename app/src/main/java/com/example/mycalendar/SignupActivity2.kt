@@ -1,5 +1,6 @@
 package com.example.mycalendar
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
@@ -153,6 +154,14 @@ class SignupActivity2 : AppCompatActivity() {
             toggleRePw.setImageResource(
                 if (isRePwVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off
             )
+        }
+        // 회원가입 버튼
+        btnFinish.setOnClickListener {
+            if (btnFinish.isEnabled) {
+                val intent = Intent(this, SignupCompleteActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
         }
     }
 
