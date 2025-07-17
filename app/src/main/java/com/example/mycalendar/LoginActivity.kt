@@ -20,6 +20,12 @@ class LoginActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
         val autoLogin = prefs.getBoolean("auto_login", false)
 
+        if (autoLogin) {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish() // 로그인 액티비티 종료
+        }
+
         // 로그인 버튼 클릭
         loginButton.setOnClickListener{
             val id = editTextId.text.toString()
