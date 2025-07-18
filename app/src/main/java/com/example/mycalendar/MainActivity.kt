@@ -53,11 +53,8 @@ class MainActivity : AppCompatActivity() {
                 @Suppress("DEPRECATION")
                 intent?.getSerializableExtra("newSchedule") as? Schedule
             }
-
             if (newSchedule != null) {
-                // AddScheduleActivity에서 돌려준 날짜가 아닌, 일정 자체의 날짜를 사용
-                val dateForSchedule = newSchedule.startDateTime?.toLocalDate() ?: selectedDate
-                addSchedule(dateForSchedule, newSchedule)
+                addSchedule(newSchedule)
             }
         }
     }
@@ -96,7 +93,7 @@ class MainActivity : AppCompatActivity() {
             if (scheduleTitle.isNotEmpty()) {
                 val newSchedule = Schedule(
                     title = scheduleTitle,
-                    startDateTime = null, // 수정됨
+                    startDateTime = null,
                     endDateTime = null,
                     color = Color.GRAY,
                     isAlarmOn = false,
@@ -104,10 +101,9 @@ class MainActivity : AppCompatActivity() {
                     isConfirmed = true,
                     isPostponed = false
                 )
-                addSchedule(selectedDate, newSchedule)
+                addSchedule(newSchedule)
                 scheduleEditText.text.clear()
             } else {
-                // 글자 입력 없이 + 누르면, 선택된 날짜 기준으로 일정 추가 화면 열기
                 openAddScheduleActivity(selectedDate)
             }
         }
@@ -181,14 +177,13 @@ class MainActivity : AppCompatActivity() {
         scheduleEditText.hint = hintFormatter.format(date)
     }
 
-    fun addSchedule(date: LocalDate, schedule: Schedule) {
-        // startDateTime이 null이면, 해당 날짜(date)는 AddScheduleActivity에서 넘겨받은
-        // 날짜이므로 그 날짜를 사용합니다.
-        // startDateTime이 null이 아니면, 일정에 포함된 시작 날짜를 사용합니다.
-        val startDate = schedule.startDateTime?.toLocalDate() ?: date
+    fun addSchedule(schedule: Schedule) {
+        // 일정에 시작 날짜가 지정되어 있으면 그것을 사용하고,
+        // 없으면 (하단 바에서 바로 추가한 경우) 현재 선택된 날짜를 사용합니다.
+        val startDate = schedule.startDateTime?.toLocalDate() ?: selectedDate
 
-        // 기간이 없는 당일 일정 또는 시간만 설정된 일정 처리
-        if (schedule.endDateTime == null || schedule.startDateTime?.toLocalDate() == schedule.endDateTime.toLocalDate()) {
+        // 기간이 없는 당일 일정 처리
+        if (schedule.endDateTime == null || startDate == schedule.endDateTime.toLocalDate()) {
             schedules.computeIfAbsent(startDate) { mutableListOf() }.add(schedule)
         } else {
             // 기간이 있는 일정 처리
