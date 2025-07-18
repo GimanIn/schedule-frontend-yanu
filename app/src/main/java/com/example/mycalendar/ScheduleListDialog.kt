@@ -85,7 +85,7 @@ class ScheduleListDialog(
             val title = scheduleEditTextDialog.text.toString()
             if (title.isNotEmpty()) {
                 val newSchedule = Schedule(title, null, null, Color.GRAY, false, "", true, false)
-                (activity as? MainActivity)?.addSchedule(date, newSchedule)
+                (activity as? MainActivity)?.addSchedule(newSchedule)
                 dailySchedules.add(newSchedule)
                 scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
                 scheduleEditTextDialog.text.clear()
