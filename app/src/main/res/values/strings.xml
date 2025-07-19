@@ -11,6 +11,7 @@
     <string name="start_time">시작 시간</string>
     <string name="end_time">종료 시간</string>
     <string name="back">뒤로가기</string>
+    <string name="timeline_description">시간별 일정 타임라인</string>
 
     <string name="day_sun">일</string>
     <string name="day_mon">월</string>

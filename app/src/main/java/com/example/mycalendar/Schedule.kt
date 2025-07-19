@@ -2,15 +2,16 @@ package com.example.mycalendar
 
 import java.io.Serializable
 import java.time.LocalDateTime
+import java.util.UUID
 
-// 일정 하나에 대한 모든 정보를 담는 데이터 클래스
 data class Schedule(
-    val title: String,
-    val startDateTime: LocalDateTime?, // 시작 날짜와 시간
-    val endDateTime: LocalDateTime?,   // 종료 날짜와 시간
-    val color: Int,
-    val isAlarmOn: Boolean,
-    val memo: String,
-    val isConfirmed: Boolean,
-    val isPostponed: Boolean
+    val id: String = UUID.randomUUID().toString(),
+    var title: String = "",
+    var startDateTime: LocalDateTime? = null,
+    var endDateTime: LocalDateTime? = null,
+    var color: Int = -7829368, // 기본 회색
+    var isAlarmOn: Boolean = false,
+    var memo: String = "",
+    var isConfirmed: Boolean = true,
+    var isPostponed: Boolean = false
 ) : Serializable

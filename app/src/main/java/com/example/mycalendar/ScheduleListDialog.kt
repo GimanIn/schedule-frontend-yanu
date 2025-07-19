@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.switchmaterial.SwitchMaterial // import 추가
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -32,7 +33,6 @@ class ScheduleListDialog(
     private val onAddNewSchedule: (LocalDate) -> Unit
 ) : DialogFragment() {
 
-    // --- 수정됨: 불필요한 변수들 최종 삭제 ---
     private lateinit var listViewContainer: View
     private lateinit var detailViewContainer: View
     private lateinit var titleTextView: TextView
@@ -45,7 +45,10 @@ class ScheduleListDialog(
     private lateinit var deleteButton: Button
     private lateinit var hoursContainer: LinearLayout
     private lateinit var scheduleBlocksContainer: FrameLayout
-    private val hourHeightDp = 60 // 시간당 높이를 60dp로 정의
+    private lateinit var editScheduleButton: ImageButton
+    private lateinit var colorPaletteLayout: LinearLayout
+    private lateinit var detailAlarmSwitch: SwitchMaterial
+    private val hourHeightDp = 60
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_schedule_list, container, false)
@@ -55,6 +58,7 @@ class ScheduleListDialog(
         return view
     }
 
+    // 모든 UI 요소를 한 곳에서 초기화
     private fun initViews(view: View) {
         listViewContainer = view.findViewById(R.id.listViewContainer)
         detailViewContainer = view.findViewById(R.id.detailViewContainer)
@@ -64,6 +68,9 @@ class ScheduleListDialog(
         addButtonDialog = view.findViewById(R.id.addButtonDialog)
         backToListButton = view.findViewById(R.id.backToListButton)
         detailDateText = view.findViewById(R.id.detailDateText)
+        editScheduleButton = detailViewContainer.findViewById(R.id.editScheduleButton)
+        colorPaletteLayout = detailViewContainer.findViewById(R.id.colorPaletteLayout)
+        detailAlarmSwitch = detailViewContainer.findViewById(R.id.detailAlarmSwitch)
         detailMemoText = view.findViewById(R.id.detailMemoText)
         deleteButton = view.findViewById(R.id.deleteButton)
         hoursContainer = view.findViewById(R.id.hoursContainer)
@@ -84,7 +91,7 @@ class ScheduleListDialog(
         addButtonDialog.setOnClickListener {
             val title = scheduleEditTextDialog.text.toString()
             if (title.isNotEmpty()) {
-                val newSchedule = Schedule(title, null, null, Color.GRAY, false, "", true, false)
+                val newSchedule = Schedule(title = title)
                 (activity as? MainActivity)?.addSchedule(newSchedule)
                 dailySchedules.add(newSchedule)
                 scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
@@ -110,9 +117,40 @@ class ScheduleListDialog(
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
         detailDateText.text = date.format(dateFormatter)
         detailMemoText.text = schedule.memo
+        detailAlarmSwitch.isChecked = schedule.isAlarmOn
 
         populateTimeline()
         addScheduleBlockToTimeline(schedule)
+
+        colorPaletteLayout.removeAllViews()
+        val colors = listOf(
+            Color.parseColor("#EF9A9A"), Color.parseColor("#90CAF9"), Color.parseColor("#A5D6A7"),
+            Color.parseColor("#FFE082"), Color.parseColor("#B39DDB")
+        )
+        colors.forEach { color ->
+            val colorView = View(requireContext()).apply { // context 대신 requireContext() 사용
+                layoutParams = LinearLayout.LayoutParams(48, 48).apply { marginStart = 8 }
+                background = ContextCompat.getDrawable(requireContext(), R.drawable.add_button_circle_background)?.mutate()
+                background.setTint(color)
+                setOnClickListener {
+                    schedule.color = color
+                    Toast.makeText(context, "색상이 변경되었습니다.", Toast.LENGTH_SHORT).show()
+                    addScheduleBlockToTimeline(schedule)
+                    onDataChanged()
+                }
+            }
+            colorPaletteLayout.addView(colorView)
+        }
+
+        detailAlarmSwitch.setOnCheckedChangeListener { _, isChecked ->
+            schedule.isAlarmOn = isChecked
+            Toast.makeText(context, "알림 설정이 변경되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+
+        editScheduleButton.setOnClickListener {
+            (activity as? MainActivity)?.openEditScheduleActivity(schedule)
+            dismiss() // 다이얼로그 닫기
+        }
 
         deleteButton.setOnClickListener {
             AlertDialog.Builder(requireContext())
@@ -142,10 +180,16 @@ class ScheduleListDialog(
     private fun addScheduleBlockToTimeline(schedule: Schedule) {
         scheduleBlocksContainer.removeAllViews()
 
-        val startHour = schedule.startDateTime?.hour ?: 0
-        val startMinute = schedule.startDateTime?.minute ?: 0
-        val endHour = schedule.endDateTime?.hour ?: 24
-        val endMinute = schedule.endDateTime?.minute ?: 0
+        // --- 👇 이 부분이 수정되었습니다 ---
+        // 변경될 수 있는 var 변수를 변경 불가능한 val 지역 변수에 담아서 사용합니다.
+        val startDateTime = schedule.startDateTime
+        val endDateTime = schedule.endDateTime
+
+        // 시간 정보가 없으면 하루 종일 일정으로 처리
+        val startHour = startDateTime?.hour ?: 0
+        val startMinute = startDateTime?.minute ?: 0
+        val endHour = endDateTime?.hour ?: 24
+        val endMinute = endDateTime?.minute ?: 0
         val startTotalHours = startHour + startMinute / 60.0
         var endTotalHours = endHour + endMinute / 60.0
         if (endTotalHours == 0.0 && schedule.endDateTime != null) {
@@ -168,8 +212,9 @@ class ScheduleListDialog(
 
         blockTitleText.text = schedule.title
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-        if (schedule.startDateTime != null && schedule.endDateTime != null) {
-            blockTimeText.text = "${schedule.startDateTime.format(timeFormatter)} - ${schedule.endDateTime.format(timeFormatter)}"
+        // schedule.startDateTime 대신 지역 변수인 startDateTime을 사용합니다.
+        if (startDateTime != null && endDateTime != null) {
+            blockTimeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
         } else {
             blockTimeText.text = "하루 종일"
         }
