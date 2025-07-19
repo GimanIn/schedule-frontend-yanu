@@ -19,7 +19,7 @@ class SignupActivity : AppCompatActivity() {
     private var isVerified = false
     private var sendCount = 1
     private var timer: CountDownTimer? = null
-    private val apiService = RetrofitClient.instance.create(ApiService::class.java)
+    private val apiService = RetrofitClient.apiService // 수정
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

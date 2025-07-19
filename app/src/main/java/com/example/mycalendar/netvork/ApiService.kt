@@ -6,6 +6,7 @@ import com.example.mycalendar.model.SignupResponse
 import com.example.mycalendar.model.ApiResponse
 import com.example.mycalendar.model.SendSMSRequest
 import com.example.mycalendar.model.VerifySMSRequest
+import com.example.mycalendar.model.LoginResponse
 
 
 import retrofit2.Call
@@ -26,8 +27,8 @@ interface ApiService {
     fun signup(@Body request: SignupRequest): Call<SignupResponse>
 
     // 4단계: 로그인
-    @POST("api/user/login")
-    fun login(@Body request: LoginRequest): Call<ApiResponse<String>> // JWT 토큰을 String으로 받음
+    @POST("/api/user/login")
+    fun login(@Body request: LoginRequest): Call<ApiResponse<LoginResponse>> // JWT 토큰을 String으로 받음
 
     // 17단계: SMS 인증 요청
     @POST("api/auth/send-sms")
