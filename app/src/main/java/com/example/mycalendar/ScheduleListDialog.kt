@@ -1,10 +1,15 @@
 package com.example.mycalendar
 
 import android.app.AlertDialog
+import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.DialogInterface
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +19,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -85,8 +91,8 @@ class ScheduleListDialog(
 
         scheduleListAdapter = ScheduleListAdapter(
             dailySchedules,
-            childFragmentManager, // 👈 자신의 childFragmentManager를 전달
-            { schedule -> // 짧은 클릭
+            childFragmentManager,
+            { schedule ->
                 showDetailView(schedule)
             },
             { schedule ->
@@ -97,12 +103,9 @@ class ScheduleListDialog(
                 (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = true)
                 dismiss()
             },
-            { schedule, position -> // 삭제하기 클릭
-                // MainActivity에 실제 데이터 삭제 요청
+            { schedule, position ->
                 (activity as? MainActivity)?.removeSchedule(schedule)
-                // 현재 다이얼로그의 목록에서 아이템 제거
                 dailySchedules.removeAt(position)
-                // 어댑터에 아이템이 사라졌음을 알림
                 scheduleListAdapter.notifyItemRemoved(position)
                 Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
@@ -135,6 +138,7 @@ class ScheduleListDialog(
     private fun showDetailView(schedule: Schedule) {
         listViewContainer.visibility = View.GONE
         detailViewContainer.visibility = View.VISIBLE
+        val shareScheduleButton = detailViewContainer.findViewById<ImageButton>(R.id.shareScheduleButton)
 
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
         detailDateText.text = date.format(dateFormatter)
@@ -150,7 +154,7 @@ class ScheduleListDialog(
             Color.parseColor("#FFE082"), Color.parseColor("#B39DDB")
         )
         colors.forEach { color ->
-            val colorView = View(requireContext()).apply { // context 대신 requireContext() 사용
+            val colorView = View(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(48, 48).apply { marginStart = 8 }
                 background = ContextCompat.getDrawable(requireContext(), R.drawable.add_button_circle_background)?.mutate()
                 background.setTint(color)
@@ -170,33 +174,78 @@ class ScheduleListDialog(
         }
 
         editScheduleButton.setOnClickListener {
-            // isCopy 파라미터를 false로 명시하여 '수정'임을 알림
             (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
             dismiss()
         }
 
+        shareScheduleButton.setOnClickListener {
+            showShareOptionsDialog(schedule, it)
+        }
+
         deleteButton.setOnClickListener {
-            // 새로 만든 삭제 확인 다이얼로그를 띄웁니다.
             val confirmationDialog = DeleteConfirmationDialog {
-                // "예"를 눌렀을 때 실행될 코드
                 val positionToRemove = dailySchedules.indexOf(schedule)
                 if (positionToRemove != -1) {
                     (activity as? MainActivity)?.removeSchedule(schedule)
                     dailySchedules.removeAt(positionToRemove)
-
-                    // 어댑터에 아이템이 삭제되었음을 알립니다.
-                    val adapter = (view?.findViewById<RecyclerView>(R.id.scheduleListRecyclerView)?.adapter as? ScheduleListAdapter)
-                    adapter?.notifyItemRemoved(positionToRemove)
+                    scheduleListAdapter.notifyItemRemoved(positionToRemove)
                 }
-
-                // 목록 화면으로 돌아갑니다.
                 listViewContainer.visibility = View.VISIBLE
                 detailViewContainer.visibility = View.GONE
-
                 Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
             confirmationDialog.show(parentFragmentManager, "DeleteConfirmationDialog")
         }
+    }
+
+    fun showShareOptionsDialog(schedule: Schedule, anchorView: View) {
+        val inflater = LayoutInflater.from(requireContext())
+        val popupView = inflater.inflate(R.layout.dialog_share_options, null)
+        val shareAsTextButton = popupView.findViewById<TextView>(R.id.shareAsTextButton)
+        val shareAsLinkButton = popupView.findViewById<TextView>(R.id.shareAsLinkButton)
+
+        val popupWindow = PopupWindow(popupView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true)
+        popupWindow.elevation = 20f
+
+        shareAsTextButton.setOnClickListener {
+            val formatter = DateTimeFormatter.ofPattern("M월 d일 a hh:mm", Locale.KOREA)
+            val scheduleText = """
+                [일정 공유]
+                📌 제목: ${schedule.title}
+                🗓️ 날짜 & 시간: ${schedule.startDateTime?.format(formatter)} ~ ${schedule.endDateTime?.format(formatter)}
+                📝 메모: ${schedule.memo}
+            """.trimIndent()
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("schedule", scheduleText)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "클립보드에 복사되었습니다.", Toast.LENGTH_SHORT).show()
+            popupWindow.dismiss()
+        }
+
+        shareAsLinkButton.setOnClickListener {
+            val startDateTime = schedule.startDateTime
+            val endDateTime = schedule.endDateTime
+            if(startDateTime == null || endDateTime == null){
+                Toast.makeText(context, "시간이 지정된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val deepLinkUri = Uri.parse("https://mycalendar.example.com/schedule").buildUpon()
+                .appendQueryParameter("title", schedule.title)
+                .appendQueryParameter("start", startDateTime.toString())
+                .appendQueryParameter("end", endDateTime.toString())
+                .appendQueryParameter("color", schedule.color.toString())
+                .appendQueryParameter("memo", schedule.memo)
+                .build()
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, deepLinkUri.toString())
+            }
+            startActivity(Intent.createChooser(intent, "일정 공유"))
+            popupWindow.dismiss()
+        }
+        popupWindow.showAsDropDown(anchorView)
     }
 
     private fun populateTimeline() {
@@ -213,7 +262,6 @@ class ScheduleListDialog(
     private fun addScheduleBlockToTimeline(schedule: Schedule) {
         scheduleBlocksContainer.removeAllViews()
 
-        // --- 👇 이 부분이 수정되었습니다 ---
         // 변경될 수 있는 var 변수를 변경 불가능한 val 지역 변수에 담아서 사용합니다.
         val startDateTime = schedule.startDateTime
         val endDateTime = schedule.endDateTime
