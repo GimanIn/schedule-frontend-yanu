@@ -90,7 +90,14 @@ class MainActivity : AppCompatActivity() {
 
         // 3. 버튼 리스너들을 설정합니다.
         searchButton.setOnClickListener {
-            Toast.makeText(this, "검색 기능 구현 예정", Toast.LENGTH_SHORT).show()
+            // 모든 일정을 하나의 리스트로 만듭니다.
+            val allSchedules = schedules.values.flatten().distinctBy { it.id }
+
+            val intent = Intent(this, SearchActivity::class.java).apply {
+                // 직렬화 가능한 형태로 전달하기 위해 ArrayList로 변환
+                putExtra("allSchedules", ArrayList(allSchedules))
+            }
+            startActivity(intent)
         }
 
         // 하단 바 '+' 버튼 클릭 리스너
