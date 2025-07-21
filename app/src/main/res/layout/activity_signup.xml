@@ -45,7 +45,7 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 이름 입력창 만들기 -->
-    <EditText
+    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/et_name"
         android:layout_width="0dp"
         android:layout_height="35dp"
@@ -104,7 +104,7 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 전화번호 입력창 만들기 -->
-    <EditText
+    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/et_phone"
         android:layout_width="0dp"
         android:layout_height="35dp"
@@ -123,7 +123,7 @@
         app:layout_constraintEnd_toStartOf="@id/btn_send_code" />
 
     <!-- 인증번호 발송 버튼 -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_send_code"
         android:layout_width="wrap_content"
         android:layout_height="35dp"
@@ -171,7 +171,7 @@
     </LinearLayout>
 
     <!-- 인증번호 입력창 만들기 -->
-    <EditText
+    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/et_auth_code"
         android:layout_width="0dp"
         android:layout_height="35dp"
@@ -205,7 +205,7 @@
         app:layout_constraintVertical_bias="0.5" />
 
     <!-- 인증번호 확인 버튼 -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_check_code"
         android:layout_width="wrap_content"
         android:layout_height="35dp"
@@ -321,7 +321,7 @@
     </LinearLayout>
 
     <!-- 하단 고정 버튼 -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_next"
         android:layout_width="0dp"
         android:layout_height="50dp"

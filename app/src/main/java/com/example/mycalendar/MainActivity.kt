@@ -30,8 +30,10 @@ import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import android.os.Build
-import android.view.GestureDetector
-import android.view.MotionEvent
+import android.widget.Button
+import com.google.android.material.navigation.NavigationView
+import androidx.core.view.GravityCompat
+import com.google.android.material.appbar.MaterialToolbar
 
 class MainActivity : AppCompatActivity() {
 
@@ -78,12 +80,24 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
-        val toggle = ActionBarDrawerToggle(
-            this, drawerLayout, toolbar,
-            R.string.navigation_drawer_open, R.string.navigation_drawer_close
-        )
-        drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+
+        toolbar.setNavigationOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        val navView = findViewById<NavigationView>(R.id.nav_view)
+        navView.setNavigationItemSelectedListener { menuItem ->
+            val handled = when (menuItem.itemId) {
+                R.id.nav_year -> { /* 연간 뷰 전환 */ true }
+                R.id.nav_month -> { /* 월간 뷰 전환 */ true }
+                R.id.nav_day -> { /* 일간 뷰 전환 */ true }
+                R.id.nav_mypage -> { /* 마이페이지 */ true }
+                else -> false
+            }
+            drawerLayout.closeDrawer(GravityCompat.START)
+            handled
+        }
 
         // 3. 버튼 리스너들을 설정합니다.
         searchButton.setOnClickListener {

@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="설정" />
+    <item
         android:id="@+id/nav_year"
         android:icon="@drawable/ic_year"
-        android:title="년" />
-
+        android:title="연간 보기" />
     <item
         android:id="@+id/nav_month"
         android:icon="@drawable/ic_month"
-        android:title="월" />
+        android:title="월간 보기" />
 
     <item
         android:id="@+id/nav_day"
         android:icon="@drawable/ic_day"
-        android:title="일" />
+        android:title="일간 보기" />
 
     <item
         android:id="@+id/nav_mypage"
         android:icon="@drawable/ic_mypage"
         android:title="마이페이지" />
+
 </menu>
