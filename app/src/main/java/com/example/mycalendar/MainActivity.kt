@@ -30,6 +30,8 @@ import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import android.os.Build
+import com.google.android.material.navigation.NavigationView
+import androidx.core.view.GravityCompat
 
 class MainActivity : AppCompatActivity() {
 
@@ -79,8 +81,34 @@ class MainActivity : AppCompatActivity() {
             this, drawerLayout, toolbar,
             R.string.navigation_drawer_open, R.string.navigation_drawer_close
         )
+        val navView = findViewById<NavigationView>(R.id.nav_view)
+
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
+
+        navView.setNavigationItemSelectedListener { menuItem ->
+            val handled = when (menuItem.itemId) {
+                R.id.nav_year -> {
+                    true
+                }
+
+                R.id.nav_month -> {
+                    true
+                }
+
+                R.id.nav_day -> {
+                    true
+                }
+
+                R.id.nav_mypage -> {
+                    true
+                }
+
+                else -> false
+            }
+            drawerLayout.closeDrawer(GravityCompat.START)
+            handled
+        }
 
         // 3. 버튼 리스너들을 설정합니다.
         searchButton.setOnClickListener {
