@@ -4,6 +4,7 @@ import java.io.Serializable
 import java.time.LocalDateTime
 import java.util.UUID
 
+
 data class Schedule(
     val id: String = UUID.randomUUID().toString(),
     var title: String = "",

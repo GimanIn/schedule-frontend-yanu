@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import android.net.Uri
 import androidx.recyclerview.widget.RecyclerView
 import java.time.format.DateTimeFormatter
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +15,12 @@ import android.graphics.drawable.ColorDrawable
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import androidx.appcompat.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.widget.Button
+import java.util.Locale
 
 class ScheduleListAdapter(
     private val scheduleList: List<Schedule>,
@@ -89,9 +96,69 @@ class ScheduleListAdapter(
                     popupWindow.dismiss()
                 }
                 menuShare.setOnClickListener {
-                    Toast.makeText(view.context, "공유 기능 구현 예정", Toast.LENGTH_SHORT).show()
-                    popupWindow.dismiss()
+                    popupWindow.dismiss() // 먼저 컨텍스트 메뉴를 닫습니다.
+
+                    // 1. '텍스트/링크' 선택 팝업의 뷰를 생성합니다.
+                    val sharePopupView = inflater.inflate(R.layout.dialog_share_options, null)
+                    val shareAsTextButton = sharePopupView.findViewById<TextView>(R.id.shareAsTextButton)
+                    val shareAsLinkButton = sharePopupView.findViewById<TextView>(R.id.shareAsLinkButton)
+
+                    // 2. 새로운 PopupWindow를 만듭니다.
+                    val sharePopupWindow = PopupWindow(
+                        sharePopupView,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        true
+                    )
+                    sharePopupWindow.elevation = 20f
+
+                    // 3. "텍스트 공유" 버튼을 눌렀을 때의 동작
+                    shareAsTextButton.setOnClickListener {
+                        val formatter = DateTimeFormatter.ofPattern("M월 d일 a hh:mm", Locale.KOREA)
+                        val scheduleText = """
+                            [일정 공유]
+                            📌 제목: ${schedule.title}
+                            🗓️ 날짜 & 시간: ${startDateTime?.format(formatter)} ~ ${endDateTime?.format(formatter)}
+                            📝 메모: ${schedule.memo}
+                        """.trimIndent()
+
+                        val clipboard = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("schedule", scheduleText)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(view.context, "클립보드에 복사되었습니다.", Toast.LENGTH_SHORT).show()
+                        sharePopupWindow.dismiss()
+                    }
+
+                    // 4. "링크 보내기" 버튼을 눌렀을 때의 동작
+                    shareAsLinkButton.setOnClickListener {
+                        val startDateTime = schedule.startDateTime
+                        val endDateTime = schedule.endDateTime
+                        if(startDateTime == null || endDateTime == null){
+                            Toast.makeText(view.context, "시간이 지정된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
+                            sharePopupWindow.dismiss()
+                            return@setOnClickListener
+                        }
+
+                        val deepLinkUri = Uri.parse("https://mycalendar.example.com/schedule").buildUpon()
+                            .appendQueryParameter("title", schedule.title)
+                            .appendQueryParameter("start", startDateTime.toString())
+                            .appendQueryParameter("end", endDateTime.toString())
+                            .appendQueryParameter("color", schedule.color.toString())
+                            .appendQueryParameter("memo", schedule.memo)
+                            .build()
+
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, deepLinkUri.toString())
+                        }
+                        view.context.startActivity(Intent.createChooser(intent, "일정 공유"))
+                        sharePopupWindow.dismiss()
+                    }
+
+                    // 5. 원래 컨텍스트 메뉴가 있던 위치에 새로운 팝업을 띄웁니다.
+                    sharePopupWindow.showAsDropDown(view)
                 }
+
                 menuDelete.setOnClickListener {
                     val confirmationDialog = DeleteConfirmationDialog {
                         onDeleteClicked(schedule, position)

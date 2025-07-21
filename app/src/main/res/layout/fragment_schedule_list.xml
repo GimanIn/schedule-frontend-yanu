@@ -108,6 +108,16 @@
                 android:textStyle="bold"/>
 
             <ImageButton
+                android:id="@+id/shareScheduleButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_share"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_toStartOf="@id/editScheduleButton"
+                android:layout_centerVertical="true"
+                android:contentDescription="공유하기"/>
+
+            <ImageButton
                 android:id="@+id/editScheduleButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
