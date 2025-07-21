@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="시작 날짜"
+        android:textStyle="bold"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <NumberPicker android:id="@+id/startYearPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+        <NumberPicker android:id="@+id/startMonthPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+        <NumberPicker android:id="@+id/startDayPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="종료 날짜"
+        android:layout_marginTop="16dp"
+        android:textStyle="bold"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <NumberPicker android:id="@+id/endYearPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+        <NumberPicker android:id="@+id/endMonthPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+        <NumberPicker android:id="@+id/endDayPicker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>
+    </LinearLayout>
+</LinearLayout>
