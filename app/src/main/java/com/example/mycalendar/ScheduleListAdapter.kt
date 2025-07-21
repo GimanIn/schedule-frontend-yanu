@@ -4,12 +4,24 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import java.time.format.DateTimeFormatter
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import androidx.appcompat.app.AlertDialog
 
 class ScheduleListAdapter(
     private val scheduleList: List<Schedule>,
-    private val onScheduleClicked: (Schedule) -> Unit
+    private val fragmentManager: FragmentManager,
+    private val onScheduleClicked: (Schedule) -> Unit,
+    private val onEditClicked: (Schedule) -> Unit,
+    private val onCopyClicked: (Schedule) -> Unit,
+    private val onDeleteClicked: (Schedule, Int) -> Unit
 ) : RecyclerView.Adapter<ScheduleListAdapter.ScheduleViewHolder>() {
 
     inner class ScheduleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -18,7 +30,7 @@ class ScheduleListAdapter(
         val titleText: TextView = itemView.findViewById(R.id.titleTextView)
         val timeRangeText: TextView = itemView.findViewById(R.id.timeRangeTextView)
 
-        fun bind(schedule: Schedule) {
+        fun bind(schedule: Schedule, position: Int) {
             titleText.text = schedule.title
             colorBar.setBackgroundColor(schedule.color)
 
@@ -45,6 +57,53 @@ class ScheduleListAdapter(
             }
 
             itemView.setOnClickListener { onScheduleClicked(schedule) }
+
+            // 길게 누르기(Long Press) 리스너
+            itemView.setOnLongClickListener { view ->
+                val inflater = LayoutInflater.from(view.context)
+                val popupView = inflater.inflate(R.layout.dialog_custom_menu, null)
+
+                // 1. PopupWindow를 생성합니다.
+                val popupWindow = PopupWindow(
+                    popupView,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    true // 바깥 영역 터치 시 닫히도록 설정
+                )
+
+                // 2. 팝업의 스타일을 설정합니다. (elevation을 주어 입체감 있게)
+                popupWindow.elevation = 20f
+
+                // 3. 팝업 안의 각 버튼에 대한 클릭 리스너를 설정합니다.
+                val menuEdit = popupView.findViewById<TextView>(R.id.menu_edit)
+                val menuCopy = popupView.findViewById<TextView>(R.id.menu_copy)
+                val menuShare = popupView.findViewById<TextView>(R.id.menu_share)
+                val menuDelete = popupView.findViewById<TextView>(R.id.menu_delete)
+
+                menuEdit.setOnClickListener {
+                    onEditClicked(schedule)
+                    popupWindow.dismiss()
+                }
+                menuCopy.setOnClickListener {
+                    onCopyClicked(schedule)
+                    popupWindow.dismiss()
+                }
+                menuShare.setOnClickListener {
+                    Toast.makeText(view.context, "공유 기능 구현 예정", Toast.LENGTH_SHORT).show()
+                    popupWindow.dismiss()
+                }
+                menuDelete.setOnClickListener {
+                    val confirmationDialog = DeleteConfirmationDialog {
+                        onDeleteClicked(schedule, position)
+                    }
+                    confirmationDialog.show(fragmentManager, "DeleteConfirmationDialog")
+                    popupWindow.dismiss()
+                }
+
+                // 4. 꾹 누른 view를 기준으로 팝업을 보여줍니다.
+                popupWindow.showAsDropDown(view)
+                true
+            }
         }
     }
 
@@ -54,7 +113,7 @@ class ScheduleListAdapter(
     }
 
     override fun onBindViewHolder(holder: ScheduleViewHolder, position: Int) {
-        holder.bind(scheduleList[position])
+        holder.bind(scheduleList[position], position)
     }
 
     override fun getItemCount(): Int = scheduleList.size

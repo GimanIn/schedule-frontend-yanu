@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --- 👇 1. 수정 전용 결과 처리기를 새로 추가합니다. ---
-    private val editScheduleLauncher = registerForActivityResult(
+    val editScheduleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -215,15 +215,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --- 👇 2. AddScheduleActivity를 '수정 모드'로 여는 함수를 추가합니다. ---
-    fun openEditScheduleActivity(schedule: Schedule) {
+    fun openEditScheduleActivity(schedule: Schedule, isCopy: Boolean) {
         val intent = Intent(this, AddScheduleActivity::class.java).apply {
             putExtra("scheduleToEdit", schedule)
+            putExtra("isCopyMode", isCopy)
         }
         editScheduleLauncher.launch(intent)
     }
 
     // --- 👇 3. 기존 일정을 삭제하는 함수를 추가합니다. ---
-    private fun removeSchedule(scheduleToRemove: Schedule) {
+    fun removeSchedule(scheduleToRemove: Schedule) {
         // 모든 날짜를 순회하며 해당 일정을 찾아서 삭제
         val entries = schedules.iterator()
         while (entries.hasNext()) {
@@ -278,6 +279,8 @@ class MainActivity : AppCompatActivity() {
         // --- 여기까지 ---
         updateCalendar()
     }
+
+
     private inner class SwipeGestureListener : GestureDetector.SimpleOnGestureListener() {
         private val SWIPE_THRESHOLD = 100
         private val SWIPE_VELOCITY_THRESHOLD = 100

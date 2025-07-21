@@ -37,6 +37,7 @@ class ScheduleListDialog(
     private lateinit var detailViewContainer: View
     private lateinit var titleTextView: TextView
     private lateinit var scheduleListRecyclerView: RecyclerView
+    private lateinit var scheduleListAdapter: ScheduleListAdapter
     private lateinit var scheduleEditTextDialog: EditText
     private lateinit var addButtonDialog: ImageButton
     private lateinit var backToListButton: ImageButton
@@ -82,9 +83,30 @@ class ScheduleListDialog(
         titleTextView.text = "${date.dayOfMonth} ${dayOfWeek}"
         scheduleEditTextDialog.hint = "${date.monthValue}월 ${date.dayOfMonth}일에 추가"
 
-        val scheduleListAdapter = ScheduleListAdapter(dailySchedules) { schedule ->
-            showDetailView(schedule)
-        }
+        scheduleListAdapter = ScheduleListAdapter(
+            dailySchedules,
+            childFragmentManager, // 👈 자신의 childFragmentManager를 전달
+            { schedule -> // 짧은 클릭
+                showDetailView(schedule)
+            },
+            { schedule ->
+                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
+                dismiss()
+            },
+            { schedule ->
+                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = true)
+                dismiss()
+            },
+            { schedule, position -> // 삭제하기 클릭
+                // MainActivity에 실제 데이터 삭제 요청
+                (activity as? MainActivity)?.removeSchedule(schedule)
+                // 현재 다이얼로그의 목록에서 아이템 제거
+                dailySchedules.removeAt(position)
+                // 어댑터에 아이템이 사라졌음을 알림
+                scheduleListAdapter.notifyItemRemoved(position)
+                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            }
+        )
         scheduleListRecyclerView.layoutManager = LinearLayoutManager(context)
         scheduleListRecyclerView.adapter = scheduleListAdapter
 
@@ -148,21 +170,32 @@ class ScheduleListDialog(
         }
 
         editScheduleButton.setOnClickListener {
-            (activity as? MainActivity)?.openEditScheduleActivity(schedule)
-            dismiss() // 다이얼로그 닫기
+            // isCopy 파라미터를 false로 명시하여 '수정'임을 알림
+            (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
+            dismiss()
         }
 
         deleteButton.setOnClickListener {
-            AlertDialog.Builder(requireContext())
-                .setTitle("일정 삭제")
-                .setMessage("'${schedule.title}' 일정을 삭제하시겠습니까?")
-                .setPositiveButton("삭제") { _, _ ->
-                    Toast.makeText(context, "삭제 기능 구현 필요", Toast.LENGTH_SHORT).show()
-                    listViewContainer.visibility = View.VISIBLE
-                    detailViewContainer.visibility = View.GONE
+            // 새로 만든 삭제 확인 다이얼로그를 띄웁니다.
+            val confirmationDialog = DeleteConfirmationDialog {
+                // "예"를 눌렀을 때 실행될 코드
+                val positionToRemove = dailySchedules.indexOf(schedule)
+                if (positionToRemove != -1) {
+                    (activity as? MainActivity)?.removeSchedule(schedule)
+                    dailySchedules.removeAt(positionToRemove)
+
+                    // 어댑터에 아이템이 삭제되었음을 알립니다.
+                    val adapter = (view?.findViewById<RecyclerView>(R.id.scheduleListRecyclerView)?.adapter as? ScheduleListAdapter)
+                    adapter?.notifyItemRemoved(positionToRemove)
                 }
-                .setNegativeButton("취소", null)
-                .show()
+
+                // 목록 화면으로 돌아갑니다.
+                listViewContainer.visibility = View.VISIBLE
+                detailViewContainer.visibility = View.GONE
+
+                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            }
+            confirmationDialog.show(parentFragmentManager, "DeleteConfirmationDialog")
         }
     }
 
