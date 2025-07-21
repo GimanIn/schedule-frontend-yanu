@@ -1,26 +1,17 @@
 package com.example.mycalendar
 
-import android.app.TimePickerDialog
 import android.graphics.Color
 import android.os.Bundle
-import android.view.View
 import android.widget.EditText
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.switchmaterial.SwitchMaterial
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -79,8 +70,6 @@ class MainActivity : AppCompatActivity() {
         // 2. Toolbar 관련 설정을 합니다.
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
-
-        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
 
         toolbar.setNavigationOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
