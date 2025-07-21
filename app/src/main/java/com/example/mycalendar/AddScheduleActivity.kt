@@ -77,7 +77,12 @@ class AddScheduleActivity : AppCompatActivity() {
             intent.getSerializableExtra("scheduleToEdit") as? Schedule
         }
 
-        if (scheduleToEdit != null) { // 수정 모드
+        // --- 👇 '복사 모드'를 처리하는 로직을 여기에 추가합니다 ---
+        val isCopyMode = intent.getBooleanExtra("isCopyMode", false)
+
+        val copyButton = findViewById<ImageButton>(R.id.copy_button)
+
+        if (scheduleToEdit != null) { // 수정 또는 복사 모드
             val schedule = scheduleToEdit!!
             titleEditText.setText(schedule.title)
             startDate = schedule.startDateTime?.toLocalDate()
@@ -90,6 +95,13 @@ class AddScheduleActivity : AppCompatActivity() {
             if (startTime != null) {
                 timeSwitch.isChecked = true
             }
+
+            // '복사 모드'라면, UI를 채운 뒤에 '새로 만들기' 상태로 전환
+            if (isCopyMode) {
+                this.scheduleToEdit = null // this를 붙여 멤버 변수임을 명확히 함
+                Toast.makeText(this, "일정이 복사되었습니다. 저장하여 새 일정으로 생성하세요.", Toast.LENGTH_LONG).show()
+            }
+            copyButton.visibility = View.VISIBLE // 수정 모드일 때만 복사 버튼 보이기
         } else { // 생성 모드
             val initialDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getSerializableExtra("selectedDate", LocalDate::class.java)
@@ -99,6 +111,7 @@ class AddScheduleActivity : AppCompatActivity() {
             } ?: LocalDate.now()
             startDate = initialDate
             endDate = initialDate
+            copyButton.visibility = View.GONE // 생성 모드에서는 숨기기
         }
 
         updateDateTextViews()
