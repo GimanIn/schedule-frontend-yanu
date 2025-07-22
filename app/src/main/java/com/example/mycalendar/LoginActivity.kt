@@ -1,20 +1,19 @@
 package com.example.mycalendar
 
 import android.content.Intent
+import android.content.SharedPreferences // ✅ new: SharedPreferences import
 import android.os.Bundle
-import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.example.mycalendar.model.LoginRequest
-import com.example.mycalendar.model.ApiResponse
 import com.example.mycalendar.model.LoginResponse
+import com.example.mycalendar.model.ApiResponse
 import com.example.mycalendar.network.RetrofitClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
 class LoginActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -27,84 +26,81 @@ class LoginActivity : AppCompatActivity() {
         val autoLoginCheckbox = findViewById<CheckBox>(R.id.checkbox_autologin)
         val backButton = findViewById<ImageButton>(R.id.btn_back)
 
-        loginButton.setOnClickListener {
+        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        val autoLogin = prefs.getBoolean("auto_login", false)
+
+        if (autoLogin) {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish() // 로그인 액티비티 종료
+        }
+
+        // 로그인 버튼 클릭
+        loginButton.setOnClickListener{
             val id = editTextId.text.toString()
             val pw = editTextPassword.text.toString()
             val autoLogin = autoLoginCheckbox.isChecked
 
-            if (id.isBlank() || pw.isBlank()) {
-                Toast.makeText(this, "아이디와 비밀번호를 입력해주세요.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            val loginRequest = LoginRequest(id, pw) // 서버에 로그인 요청 보내기 아래 부터
 
-            login(id, pw, autoLogin)
+            // ✅ 서버에 로그인 요청 보내기
+            RetrofitClient.apiService.login(loginRequest)
+                .enqueue(object : Callback<ApiResponse<LoginResponse>> {
+                    override fun onResponse(
+                        call: Call<ApiResponse<LoginResponse>>,
+                        response: Response<ApiResponse<LoginResponse>>
+                    ) {
+                        if (response.isSuccessful && response.body()?.success == true) {
+                            val loginData = response.body()?.data
+
+                            Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
+
+                            // ✅ new: SharedPreferences에 토큰, 사용자 정보 저장
+                            val editor = prefs.edit()
+                            editor.putString("access_token", loginData?.token)
+                            editor.putString("refresh_token", loginData?.refreshToken) // ✅ new
+                            editor.putString("user_id", loginData?.userId)
+                            editor.putString("user_name", loginData?.name)
+                            editor.putString("user_phone", loginData?.phone)
+                            editor.putBoolean("auto_login", autoLogin) //수정
+                            editor.apply()
+
+                            // ✅ new: 토큰 만료 시간 저장 (10분 후로 임시 설정)
+                            val expiryTimeMillis = System.currentTimeMillis() + (10 * 60 * 1000)
+                            editor.putString("token_expiry_time", expiryTimeMillis.toString())
+
+                            editor.apply()
+
+                            // ✅ 메인 화면으로 이동
+                            val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this@LoginActivity, "로그인 실패: ${response.body()?.message ?: "에러"}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ApiResponse<LoginResponse>>, t: Throwable) {
+                        Toast.makeText(this@LoginActivity, "서버 오류: ${t.message}", Toast.LENGTH_SHORT).show()
+                    }
+                })
         }
 
+        // 회원가입 버튼 클릭
         signupButton.setOnClickListener {
-            startActivity(Intent(this, SignupActivity::class.java))
+            // 회원가입 화면으로 이동
+            val intent = Intent(this, SignupActivity::class.java)
+            startActivity(intent)
         }
 
+        // 아이디/비밀번호 찾기 클릭
         findInfoText.setOnClickListener {
             Toast.makeText(this, "아이디/비밀번호 찾기 기능은 준비 중입니다.", Toast.LENGTH_SHORT).show()
         }
 
+        // 뒤로가기 버튼 클릭
         backButton.setOnClickListener {
-            finish()
+            finish() // 현재 액티비티 종료
         }
-    }
-
-    private fun login(id: String, pw: String, autoLogin: Boolean) {
-        val loginRequest = LoginRequest(userId = id, password = pw)
-
-        RetrofitClient.apiService.login(loginRequest)
-            .enqueue(object : Callback<ApiResponse<LoginResponse>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<LoginResponse>>,
-                    response: Response<ApiResponse<LoginResponse>>
-                ) {
-                    if (response.isSuccessful && response.body()?.code == 200) {
-                        val loginData = response.body()?.data
-
-                        loginData?.let {
-                            val token = it.token
-                            val userId = it.userId
-                            val name = it.name
-                            val phone = it.phone
-
-                            Log.d("LOGIN", "받은 토큰: $token")
-
-                            val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-                            prefs.edit().apply {
-                                putString("user_id", userId)
-                                putString("user_pw", pw)
-                                putBoolean("auto_login", autoLogin)
-                                putString("jwt_token", token)
-                                putString("user_name", name)
-                                putString("user_phone", phone)
-                                apply()
-                            }
-
-                            Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
-                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                            finish()
-                        } ?: run {
-                            Toast.makeText(this@LoginActivity, "로그인 실패: 응답 데이터가 없습니다.", Toast.LENGTH_SHORT).show()
-                            Log.e("LOGIN", "응답은 성공했지만 data=null")
-                        }
-                    } else {
-                        Toast.makeText(
-                            this@LoginActivity,
-                            "로그인 실패: ${response.body()?.message ?: "에러"}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        Log.e("LOGIN", "응답 코드: ${response.code()}, 메시지: ${response.body()?.message}")
-                    }
-                }
-
-                override fun onFailure(call: Call<ApiResponse<LoginResponse>>, t: Throwable) {
-                    Toast.makeText(this@LoginActivity, "서버 오류: ${t.message}", Toast.LENGTH_SHORT).show()
-                    Log.e("LOGIN", "통신 실패: ${t.message}", t)
-                }
-            })
     }
 }

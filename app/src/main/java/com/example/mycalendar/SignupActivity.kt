@@ -1,5 +1,6 @@
 package com.example.mycalendar
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.text.Editable
@@ -28,7 +29,6 @@ class SignupActivity : AppCompatActivity() {
         val etName = findViewById<EditText>(R.id.et_name)
         val etPhone = findViewById<EditText>(R.id.et_phone)
         val etAuthCode = findViewById<EditText>(R.id.et_auth_code)
-        val etPassword = findViewById<EditText>(R.id.et_password)
 
         val btnSendCode = findViewById<Button>(R.id.btn_send_code)
         val btnCheckCode = findViewById<Button>(R.id.btn_check_code)
@@ -64,6 +64,7 @@ class SignupActivity : AppCompatActivity() {
                     if (btnSendCode.isEnabled) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
                 )
             }
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         }
@@ -79,6 +80,7 @@ class SignupActivity : AppCompatActivity() {
                     if (valid) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
                 )
             }
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -131,31 +133,20 @@ class SignupActivity : AppCompatActivity() {
             })
         }
 
+        // ✅ NEW: 인증 완료 시 다음 단계로 이동 (서버 요청 X, 다음 화면으로만 이동)
         btnNext.setOnClickListener {
             val name = etName.text.toString().trim()
             val phone = etPhone.text.toString().trim()
-            val password = etPassword.text.toString().trim()
 
             if (!isVerified) {
                 Toast.makeText(this, "휴대폰 인증을 완료해주세요", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val signupRequest = SignupRequest(phone, name, phone, password)
-            apiService.signup(signupRequest).enqueue(object : Callback<SignupResponse> {
-                override fun onResponse(call: Call<SignupResponse>, response: Response<SignupResponse>) {
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        Toast.makeText(this@SignupActivity, "회원가입 성공", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        Toast.makeText(this@SignupActivity, "회원가입 실패: ${response.body()?.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<SignupResponse>, t: Throwable) {
-                    Toast.makeText(this@SignupActivity, "서버 오류: ${t.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
+            val intent = Intent(this, SignupActivity2::class.java)
+            intent.putExtra("name", name)
+            intent.putExtra("phone", phone)
+            startActivity(intent)
         }
 
         val updateAllCheckbox = {
