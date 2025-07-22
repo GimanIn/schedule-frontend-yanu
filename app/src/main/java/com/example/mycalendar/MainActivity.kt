@@ -191,13 +191,17 @@ class MainActivity : AppCompatActivity() {
                     val startStr = uri.getQueryParameter("start")
                     val endStr = uri.getQueryParameter("end")
                     val colorStr = uri.getQueryParameter("color")
+                    val category = uri.getQueryParameter("category") ?: ""
+                    val location = uri.getQueryParameter("location") ?: ""
                     val memo = uri.getQueryParameter("memo") ?: ""
 
                     val newSchedule = Schedule(
                         title = title,
                         startDateTime = if (startStr != null) LocalDateTime.parse(startStr) else null,
                         endDateTime = if (endStr != null) LocalDateTime.parse(endStr) else null,
-                        color = colorStr?.toInt() ?: Color.GRAY,
+                        color = colorStr?.toInt() ?: Color.parseColor("#4285F4"),
+                        category = category,
+                        location = location,
                         memo = memo
                     )
 

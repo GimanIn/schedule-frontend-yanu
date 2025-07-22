@@ -119,6 +119,7 @@ class ScheduleListAdapter(
                             [일정 공유]
                             📌 제목: ${schedule.title}
                             🗓️ 날짜 & 시간: ${startDateTime?.format(formatter)} ~ ${endDateTime?.format(formatter)}
+                            📍 분야: ( ${schedule.category} ) / 장소: ( ${schedule.location} )
                             📝 메모: ${schedule.memo}
                         """.trimIndent()
 

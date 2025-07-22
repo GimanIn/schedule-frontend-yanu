@@ -239,6 +239,7 @@ class ScheduleListDialog(
                 [일정 공유]
                 📌 제목: ${schedule.title}
                 🗓️ 날짜 & 시간: ${schedule.startDateTime?.format(formatter)} ~ ${schedule.endDateTime?.format(formatter)}
+                📍 분야: ( ${schedule.category} ) / 장소: ( ${schedule.location} )
                 📝 메모: ${schedule.memo}
             """.trimIndent()
             val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -261,6 +262,8 @@ class ScheduleListDialog(
                 .appendQueryParameter("start", startDateTime.toString())
                 .appendQueryParameter("end", endDateTime.toString())
                 .appendQueryParameter("color", schedule.color.toString())
+                .appendQueryParameter("category", schedule.category)
+                .appendQueryParameter("location", schedule.location)
                 .appendQueryParameter("memo", schedule.memo)
                 .build()
 
