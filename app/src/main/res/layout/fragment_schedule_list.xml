@@ -145,10 +145,16 @@
             android:paddingTop="8dp"
             android:contentDescription="@string/timeline_description">
 
-            <FrameLayout
+            <RelativeLayout
                 android:id="@+id/timelineContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
+                <FrameLayout
+                    android:id="@+id/scheduleBlocksContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="40dp"/>
 
                 <LinearLayout
                     android:id="@+id/hoursContainer"
@@ -156,11 +162,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"/>
 
-                <FrameLayout
-                    android:id="@+id/scheduleBlocksContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
-            </FrameLayout>
+            </RelativeLayout>
         </ScrollView>
 
         <LinearLayout

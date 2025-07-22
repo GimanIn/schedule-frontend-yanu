@@ -295,6 +295,26 @@ class ScheduleListDialog(
         val startDateTime = schedule.startDateTime
         val endDateTime = schedule.endDateTime
 
+        // --- 👇 '하루 종일'과 '시간 지정' 로직을 여기서 처리합니다. ---
+        if (startDateTime == null || endDateTime == null) {
+            // 하루 종일 일정일 경우
+            val inflater = LayoutInflater.from(context)
+            val scheduleBlockView = inflater.inflate(R.layout.item_schedule_block, scheduleBlocksContainer, false) as LinearLayout
+
+            val blockTitleText = scheduleBlockView.findViewById<TextView>(R.id.blockTitleText)
+            val blockTimeText = scheduleBlockView.findViewById<TextView>(R.id.blockTimeText)
+
+            blockTitleText.text = schedule.title
+            blockTimeText.text = "하루 종일"
+
+            (scheduleBlockView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+            // 하루 종일 일정은 타임라인 전체를 채우도록 설정
+            val params = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            scheduleBlocksContainer.addView(scheduleBlockView, params)
+            return // 함수 종료
+        }
+
         // 시간 정보가 없으면 하루 종일 일정으로 처리
         val startHour = startDateTime?.hour ?: 0
         val startMinute = startDateTime?.minute ?: 0
@@ -310,24 +330,18 @@ class ScheduleListDialog(
 
         val density = resources.displayMetrics.density
         val hourHeightPx = (hourHeightDp * density).toInt()
+        // --- 👇 여기가 수정된 최종 위치 및 높이 계산 로직 ---
         val topMargin = (startTotalHours * hourHeightPx).toInt()
         val height = (durationHours * hourHeightPx).toInt()
 
         val inflater = LayoutInflater.from(context)
         val scheduleBlockView = inflater.inflate(R.layout.item_schedule_block, scheduleBlocksContainer, false) as LinearLayout
 
-        // --- 수정됨: 블록 내부의 View들을 여기서 찾아서 사용합니다. ---
         val blockTitleText = scheduleBlockView.findViewById<TextView>(R.id.blockTitleText)
         val blockTimeText = scheduleBlockView.findViewById<TextView>(R.id.blockTimeText)
-
         blockTitleText.text = schedule.title
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-        // schedule.startDateTime 대신 지역 변수인 startDateTime을 사용합니다.
-        if (startDateTime != null && endDateTime != null) {
-            blockTimeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
-        } else {
-            blockTimeText.text = "하루 종일"
-        }
+        blockTimeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
 
         (scheduleBlockView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
 
