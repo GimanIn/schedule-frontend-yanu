@@ -5,8 +5,10 @@ import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -24,6 +26,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import android.widget.PopupWindow
 
 class AddScheduleActivity : AppCompatActivity() {
 
@@ -44,7 +47,7 @@ class AddScheduleActivity : AppCompatActivity() {
     private var endDate: LocalDate? = null
     private var startTime: LocalTime? = null
     private var endTime: LocalTime? = null
-    private var selectedColor: Int = Color.GRAY
+    private var selectedColor: Int = Color.parseColor("#4285F4")
     private var scheduleToEdit: Schedule? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -250,12 +253,39 @@ class AddScheduleActivity : AppCompatActivity() {
     }
 
     private fun openColorPicker() {
-        val colors = listOf(Color.parseColor("#EF9A9A"), Color.parseColor("#90CAF9"), Color.parseColor("#A5D6A7"), Color.parseColor("#FFE082"), Color.parseColor("#B39DDB"))
-        val colorNames = arrayOf("빨강", "파랑", "초록", "노랑", "보라")
-        AlertDialog.Builder(this).setTitle("색상 선택").setItems(colorNames) { _, which ->
-            selectedColor = colors[which]
-            colorDot.background.mutate().setTint(selectedColor)
-        }.show()
+        val inflater = LayoutInflater.from(this)
+        val popupView = inflater.inflate(R.layout.popup_color_palette, null)
+
+        // 1. PopupWindow를 생성합니다.
+        val popupWindow = PopupWindow(
+            popupView,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            true // 바깥 영역 터치 시 닫히도록 설정
+        )
+        popupWindow.elevation = 20f
+
+        // 2. 각 색상 원에 실제 색을 칠하고, 클릭 리스너를 설정합니다.
+        val colors = listOf(
+            Pair(popupView.findViewById<View>(R.id.palette_color_1), "#4285F4"),
+            Pair(popupView.findViewById<View>(R.id.palette_color_2), "#34A853"),
+            Pair(popupView.findViewById<View>(R.id.palette_color_3), "#EA4335"),
+            Pair(popupView.findViewById<View>(R.id.palette_color_4), "#FFBE00"),
+            Pair(popupView.findViewById<View>(R.id.palette_color_5), "#A142F4"),
+            Pair(popupView.findViewById<View>(R.id.palette_color_6), "#EB6E94")
+        )
+
+        colors.forEach { (colorView, colorHex) ->
+            (colorView.background.mutate() as? GradientDrawable)?.setColor(Color.parseColor(colorHex))
+            colorView.setOnClickListener {
+                selectedColor = Color.parseColor(colorHex)
+                colorDot.background.mutate().setTint(selectedColor)
+                popupWindow.dismiss() // 색상 선택 시 팝업 닫기
+            }
+        }
+
+        // 3. colorDot을 기준으로 팝업을 보여줍니다.
+        popupWindow.showAsDropDown(colorDot)
     }
 
     private fun updateDateTextViews() {
