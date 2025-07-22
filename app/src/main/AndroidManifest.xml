@@ -29,6 +29,12 @@
             android:name=".SignupCompleteActivity"
             android:exported="false" />
         <activity
+            android:name=".YearActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MypageActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask">
