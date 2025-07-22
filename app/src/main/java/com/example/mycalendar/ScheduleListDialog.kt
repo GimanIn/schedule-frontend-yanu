@@ -142,7 +142,17 @@ class ScheduleListDialog(
         val shareScheduleButton = detailViewContainer.findViewById<ImageButton>(R.id.shareScheduleButton)
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
         detailDateText.text = date.format(dateFormatter)
-        detailMemoText.text = schedule.memo
+        val detailsText = StringBuilder()
+        if (schedule.category.isNotBlank()) {
+            detailsText.append("카테고리: ${schedule.category}\n")
+        }
+        if (schedule.location.isNotBlank()) {
+            detailsText.append("장소: ${schedule.location}\n")
+        }
+        if (schedule.memo.isNotBlank()) {
+            detailsText.append("메모: ${schedule.memo}")
+        }
+        detailMemoText.text = detailsText.toString().trim()
         detailAlarmSwitch.isChecked = schedule.isAlarmOn
 
         populateTimeline()
