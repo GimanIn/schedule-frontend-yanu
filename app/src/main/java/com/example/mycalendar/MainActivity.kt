@@ -21,11 +21,14 @@ import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import android.os.Build
+import android.view.LayoutInflater
 import android.widget.Button
+import android.widget.TextView
 import com.google.android.material.navigation.NavigationView
 import androidx.core.view.GravityCompat
 import com.google.android.material.appbar.MaterialToolbar
 import java.time.LocalDateTime
+import androidx.appcompat.app.AlertDialog
 import com.example.mycalendar.Schedule
 
 class MainActivity : AppCompatActivity() {
@@ -155,6 +158,26 @@ class MainActivity : AppCompatActivity() {
             } else {
                 openAddScheduleActivity(selectedDate)
             }
+        }
+
+        val aiButton = findViewById<ImageButton>(R.id.aiButton)
+        aiButton.setOnClickListener {
+            // AlertDialog를 사용해 커스텀 뷰를 띄웁니다.
+            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
+            val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
+            val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
+
+            // 현재 날짜를 표시
+            val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
+            summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
+
+            // TODO: 여기에 나중에 백엔드로부터 AI 요약 내용을 받아와
+            // summaryContentText.text에 설정하는 코드가 들어갑니다.
+
+            AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setPositiveButton("닫기", null)
+                .show()
         }
 
         setupCalendar() // 캘린더 초기 설정
