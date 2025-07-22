@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="@drawable/dialog_rounded_background">
+
+    <View android:id="@+id/palette_color_1" style="@style/ColorPickerCircle.Small"/>
+    <View android:id="@+id/palette_color_2" style="@style/ColorPickerCircle.Small"/>
+    <View android:id="@+id/palette_color_3" style="@style/ColorPickerCircle.Small"/>
+    <View android:id="@+id/palette_color_4" style="@style/ColorPickerCircle.Small"/>
+    <View android:id="@+id/palette_color_5" style="@style/ColorPickerCircle.Small"/>
+    <View android:id="@+id/palette_color_6" style="@style/ColorPickerCircle.Small"/>
+
+</LinearLayout>

@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
                     title = scheduleTitle,
                     startDateTime = null,
                     endDateTime = null,
-                    color = Color.GRAY,
+                    color = Color.parseColor("#4285F4"),
                     isAlarmOn = false,
                     memo = "",
                     isConfirmed = true,

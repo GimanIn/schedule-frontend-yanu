@@ -53,7 +53,7 @@ class ScheduleListDialog(
     private lateinit var hoursContainer: LinearLayout
     private lateinit var scheduleBlocksContainer: FrameLayout
     private lateinit var editScheduleButton: ImageButton
-    private lateinit var colorPaletteLayout: LinearLayout
+    private lateinit var currentColorView: View
     private lateinit var detailAlarmSwitch: SwitchMaterial
     private val hourHeightDp = 60
 
@@ -76,7 +76,7 @@ class ScheduleListDialog(
         backToListButton = view.findViewById(R.id.backToListButton)
         detailDateText = view.findViewById(R.id.detailDateText)
         editScheduleButton = detailViewContainer.findViewById(R.id.editScheduleButton)
-        colorPaletteLayout = detailViewContainer.findViewById(R.id.colorPaletteLayout)
+        currentColorView = detailViewContainer.findViewById(R.id.currentColorView)
         detailAlarmSwitch = detailViewContainer.findViewById(R.id.detailAlarmSwitch)
         detailMemoText = view.findViewById(R.id.detailMemoText)
         deleteButton = view.findViewById(R.id.deleteButton)
@@ -132,6 +132,7 @@ class ScheduleListDialog(
         backToListButton.setOnClickListener {
             listViewContainer.visibility = View.VISIBLE
             detailViewContainer.visibility = View.GONE
+            scheduleListAdapter.notifyDataSetChanged()
         }
     }
 
@@ -139,7 +140,6 @@ class ScheduleListDialog(
         listViewContainer.visibility = View.GONE
         detailViewContainer.visibility = View.VISIBLE
         val shareScheduleButton = detailViewContainer.findViewById<ImageButton>(R.id.shareScheduleButton)
-
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
         detailDateText.text = date.format(dateFormatter)
         detailMemoText.text = schedule.memo
@@ -148,24 +148,40 @@ class ScheduleListDialog(
         populateTimeline()
         addScheduleBlockToTimeline(schedule)
 
-        colorPaletteLayout.removeAllViews()
-        val colors = listOf(
-            Color.parseColor("#EF9A9A"), Color.parseColor("#90CAF9"), Color.parseColor("#A5D6A7"),
-            Color.parseColor("#FFE082"), Color.parseColor("#B39DDB")
-        )
-        colors.forEach { color ->
-            val colorView = View(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(48, 48).apply { marginStart = 8 }
-                background = ContextCompat.getDrawable(requireContext(), R.drawable.add_button_circle_background)?.mutate()
-                background.setTint(color)
-                setOnClickListener {
-                    schedule.color = color
-                    Toast.makeText(context, "색상이 변경되었습니다.", Toast.LENGTH_SHORT).show()
-                    addScheduleBlockToTimeline(schedule)
-                    onDataChanged()
+        val currentColorView = detailViewContainer.findViewById<View>(R.id.currentColorView)
+        (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+        currentColorView.setOnClickListener { colorDotView ->
+            val inflater = LayoutInflater.from(requireContext())
+            val popupView = inflater.inflate(R.layout.popup_color_palette, null)
+            val popupWindow = PopupWindow(
+                popupView,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                true
+            )
+            popupWindow.elevation = 20f
+
+            val colors = listOf(
+                Pair(popupView.findViewById<View>(R.id.palette_color_1), "#4285F4"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_2), "#34A853"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_3), "#EA4335"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_4), "#FFBE00"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_5), "#A142F4"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_6), "#EB6E94")
+            )
+
+            colors.forEach { (colorView, colorHex) ->
+                (colorView.background.mutate() as? GradientDrawable)?.setColor(Color.parseColor(colorHex))
+                colorView.setOnClickListener {
+                    schedule.color = Color.parseColor(colorHex)
+                    (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+                    addScheduleBlockToTimeline(schedule) // 1. 타임라인 블록을 새 색상으로 다시 그립니다.
+                    onDataChanged() // 2. MainActivity에 데이터가 변경되었음을 즉시 알립니다.
+                    popupWindow.dismiss()
                 }
             }
-            colorPaletteLayout.addView(colorView)
+            popupWindow.showAsDropDown(colorDotView)
         }
 
         detailAlarmSwitch.setOnCheckedChangeListener { _, isChecked ->
