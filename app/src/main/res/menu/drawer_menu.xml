@@ -7,16 +7,16 @@
     <item
         android:id="@+id/nav_year"
         android:icon="@drawable/ic_year"
-        android:title="연간 보기" />
+        android:title="년" />
     <item
         android:id="@+id/nav_month"
         android:icon="@drawable/ic_month"
-        android:title="월간 보기" />
+        android:title="월" />
 
     <item
         android:id="@+id/nav_day"
         android:icon="@drawable/ic_day"
-        android:title="일간 보기" />
+        android:title="일" />
 
     <item
         android:id="@+id/nav_mypage"
