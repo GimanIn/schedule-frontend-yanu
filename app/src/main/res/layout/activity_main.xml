@@ -39,19 +39,33 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="2025년 7월" />
 
-    <ImageView
-        android:id="@+id/searchButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:contentDescription="@string/search_icon_description"
-        android:minWidth="48dp"
-        android:minHeight="48dp"
-        android:padding="8dp"
-        android:src="@drawable/ic_search"
-        app:layout_constraintBottom_toBottomOf="@id/monthYearText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/monthYearText" />
+        <ImageButton
+            android:id="@+id/aiButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="AI 요약"
+            android:padding="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_ai_custom"
+            app:layout_constraintBottom_toBottomOf="@+id/searchButton"
+            app:layout_constraintEnd_toStartOf="@+id/searchButton"
+            app:layout_constraintTop_toTopOf="@+id/searchButton" />
+
+        <ImageButton
+            android:id="@+id/searchButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/search_icon_description"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_search"
+            app:layout_constraintBottom_toBottomOf="@id/monthYearText"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/monthYearText" />
 
     <LinearLayout
         android:id="@+id/weekHeaderLayout"
