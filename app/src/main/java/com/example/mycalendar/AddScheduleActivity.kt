@@ -95,6 +95,8 @@ class AddScheduleActivity : AppCompatActivity() {
             selectedColor = schedule.color
             alarmSwitch.isChecked = schedule.isAlarmOn
             memoEditText.setText(schedule.memo)
+            categoryEditText.setText(schedule.category)
+            locationEditText.setText(schedule.location)
             if (startTime != null) {
                 timeSwitch.isChecked = true
             }
@@ -186,7 +188,6 @@ class AddScheduleActivity : AppCompatActivity() {
             return
         }
 
-        val memo = "카테고리: ${categoryEditText.text}\n장소: ${locationEditText.text}\n메모: ${memoEditText.text}"
 
         val scheduleId = if (scheduleToEdit != null && !isCopy) {
             scheduleToEdit!!.id
@@ -201,7 +202,12 @@ class AddScheduleActivity : AppCompatActivity() {
             endDateTime = finalEndDateTime,
             color = selectedColor,
             isAlarmOn = alarmSwitch.isChecked,
-            memo = memo.trim()
+            memo = memoEditText.text.toString().trim(),
+            category = categoryEditText.text.toString().trim(),
+            location = locationEditText.text.toString().trim(),
+            isConfirmed = true,
+            isPostponed = false,
+            documentId = scheduleToEdit?.documentId
         )
 
         val resultIntent = Intent()

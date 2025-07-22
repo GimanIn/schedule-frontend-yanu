@@ -14,6 +14,9 @@ data class Schedule(
     var color: Int = Color.parseColor("#4285F4"), // 기본 파란색
     var isAlarmOn: Boolean = false,
     var memo: String = "",
+    var category: String = "",
+    var location: String = "",
     var isConfirmed: Boolean = true,
-    var isPostponed: Boolean = false
+    var isPostponed: Boolean = false,
+    var documentId: String? = null
 ) : Serializable
