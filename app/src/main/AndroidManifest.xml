@@ -32,7 +32,7 @@
             android:exported="false" />
         <activity
             android:name=".YearActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".MypageActivity"
             android:exported="false" />

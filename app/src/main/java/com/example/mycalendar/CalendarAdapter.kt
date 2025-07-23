@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import java.time.LocalDate
 
 class CalendarAdapter(
-    var dayList: ArrayList<LocalDate>, // var로 변경
+    var dayList: List<LocalDate?>, // var로 변경
     private val schedules: Map<LocalDate, List<Schedule>>,
     private val onItemClicked: (LocalDate) -> Unit
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
@@ -112,6 +112,9 @@ class CalendarAdapter(
         }
     }
 
+    fun setBaseDate(date: LocalDate) {
+        this.selectedDate = date
+    }
 
     // 일정 바 View를 생성하고 추가하는 헬퍼 함수
     private fun addScheduleBar(holder: DayViewHolder, schedule: Schedule, date: LocalDate) {

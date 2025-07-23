@@ -42,14 +42,16 @@ import android.app.NotificationChannel
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.example.mycalendar.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var calendarRecyclerView: RecyclerView
     private lateinit var scheduleEditText: EditText
     private lateinit var toolbar: Toolbar
-    private lateinit var adapter: CalendarAdapter // 어댑터를 멤버 변수로 이동
     private lateinit var gestureDetector: androidx.core.view.GestureDetectorCompat
+    private lateinit var calendarAdapter: CalendarAdapter
+    private lateinit var binding: ActivityMainBinding
 
     private val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
     private var selectedDate: LocalDate = LocalDate.now()
@@ -76,9 +78,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        createNotificationChannel()
+        // ✅ 1. binding 먼저 초기화
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        sendTestNotification()
+        // ✅ 2. binding 사용
+        // ✅ 날짜 리스트 생성
+        val yearMonth = YearMonth.from(selectedDate)
+        val daysInMonth = generateDaysInMonth(yearMonth)
+        // ✅ adapter 생성
+        calendarAdapter = CalendarAdapter(
+            dayList = daysInMonth,
+            schedules = schedules,
+            onItemClicked = { date ->
+                selectedDate = date
+                updateCalendar()
+            }
+        )
+        binding.calendarRecyclerView.adapter = calendarAdapter
 
         // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다. 수정함.
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
@@ -242,36 +259,41 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        handleIntent(intent)
+        updateCalendar()
     }
 
     private fun setupCalendar() {
-        adapter = CalendarAdapter(ArrayList(), schedules) { date ->
-            // --- 여기가 모든 날짜 클릭 로직을 담당하는 최종 버전입니다 ---
+        val yearMonth = YearMonth.from(selectedDate)
+        val daysInMonth = generateDaysInMonth(yearMonth)
 
-            // Case 2: 이미 선택된 날짜를 다시 클릭했을 경우 (동작)
+        calendarAdapter = CalendarAdapter(
+            dayList = daysInMonth,
+            schedules = schedules
+        ) { date ->
             if (selectedDate == date) {
                 val dailySchedules = schedules[date]
                 if (dailySchedules.isNullOrEmpty()) {
-                    // 일정이 없으면 -> 일정 추가 화면 열기
                     openAddScheduleActivity(date)
                 } else {
-                    // 일정이 있으면 -> 일정 목록 다이얼로그 열기
-                    val dialog = ScheduleListDialog(date, dailySchedules.toMutableList(), {
-                        updateCalendar()
-                    }, { clickedDate ->
-                        openAddScheduleActivity(clickedDate)
-                    })
+                    val dialog = ScheduleListDialog(
+                        date,
+                        dailySchedules.toMutableList(),
+                        onDataChanged = { updateCalendar() },
+                        onAddNewSchedule = { clickedDate ->
+                            openAddScheduleActivity(clickedDate)
+                        }
+                    )
                     dialog.show(supportFragmentManager, "ScheduleListDialog")
                 }
-            }
-            // Case 1: 새로운 날짜를 클릭했을 경우 (선택)
-            else {
+            } else {
                 selectedDate = date
-                updateCalendar() // 선택 상태를 갱신하고 하단 바 텍스트를 바꾸기 위해 갱신
+                updateCalendar()
             }
         }
+
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
-        calendarRecyclerView.adapter = adapter
+        calendarRecyclerView.adapter = calendarAdapter
 
         // 1. 우리가 만든 제스처 리스너를 사용하여 제스처 감지기를 생성합니다.
         gestureDetector = androidx.core.view.GestureDetectorCompat(this, SwipeGestureListener())
@@ -291,17 +313,44 @@ class MainActivity : AppCompatActivity() {
         updateCalendar() // 앱 실행 시 첫 화면 로드
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+        updateCalendar()
+    }
+
+    private fun handleIntent(intent: Intent) {
+        val y = intent.getIntExtra("targetYear", LocalDate.now().year)
+        val m = intent.getIntExtra("targetMonth", LocalDate.now().monthValue)
+        selectedDate = LocalDate.of(y, m, 1)
+    }
+
+    private fun generateDaysInMonth(yearMonth: YearMonth): ArrayList<LocalDate?> {
+        val dayList = ArrayList<LocalDate?>()
+        val firstDayOfMonth = yearMonth.atDay(1)
+        val daysInMonth = yearMonth.lengthOfMonth()
+        val dayOfWeekOfFirst = firstDayOfMonth.dayOfWeek.value % 7
+
+        // 빈 칸을 null로 채움
+        for (i in 0 until dayOfWeekOfFirst) {
+            dayList.add(null)
+        }
+        // 날짜 채우기
+        for (i in 1..daysInMonth) {
+            dayList.add(LocalDate.of(yearMonth.year, yearMonth.month, i))
+        }
+        return dayList
+    }
 
     private fun updateCalendar() {
-        toolbar.title =
-            selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
-        val dayList = generateDaysInMonth(YearMonth.from(selectedDate))
+        val yearMonth = YearMonth.from(selectedDate)
+        val dayList = generateDaysInMonth(yearMonth)
 
-        // 어댑터에 데이터만 새로 채우고, 갱신을 알립니다.
-        adapter.dayList = dayList
-        adapter.selectedDate = selectedDate
-        adapter.notifyDataSetChanged()
+        calendarAdapter.dayList = dayList
+        calendarAdapter.selectedDate = selectedDate
+        calendarAdapter.notifyDataSetChanged()
 
+        binding.monthYearText.text = "${selectedDate.year}년 ${selectedDate.monthValue}월"
         updateScheduleHint(selectedDate)
     }
 
@@ -369,20 +418,6 @@ class MainActivity : AppCompatActivity() {
                 entries.remove()
             }
         }
-    }
-
-    private fun generateDaysInMonth(yearMonth: YearMonth): ArrayList<LocalDate> {
-        val dayList = ArrayList<LocalDate>()
-        val firstDayOfMonth = yearMonth.atDay(1)
-        val dayOfWeekOfFirst = firstDayOfMonth.dayOfWeek.value % 7
-
-        for (i in 0 until dayOfWeekOfFirst) {
-            dayList.add(LocalDate.MIN)
-        }
-        for (i in 1..yearMonth.lengthOfMonth()) {
-            dayList.add(yearMonth.atDay(i))
-        }
-        return dayList
     }
 
     private fun updateScheduleHint(date: LocalDate) {
