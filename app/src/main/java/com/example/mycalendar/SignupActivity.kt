@@ -8,6 +8,8 @@ import android.text.TextWatcher
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import android.graphics.Color
+import android.content.res.ColorStateList
+import com.google.android.material.button.MaterialButton
 
 class SignupActivity : AppCompatActivity() {
 
@@ -29,7 +31,7 @@ class SignupActivity : AppCompatActivity() {
         // 버튼
         val btnSendCode = findViewById<Button>(R.id.btn_send_code)
         val btnCheckCode = findViewById<Button>(R.id.btn_check_code)
-        val btnNext = findViewById<Button>(R.id.btn_next)
+        val btnNext = findViewById<MaterialButton>(R.id.btn_next)
 
         // 이름 경고 메시지
         val messageName = findViewById<LinearLayout>(R.id.message_name)
@@ -88,8 +90,13 @@ class SignupActivity : AppCompatActivity() {
                 // 휴대폰 번호 포함한 전체 버튼 조건
                 val valid = isNameValid && isPhoneValid
                 btnSendCode.isEnabled = valid
-                btnSendCode.setBackgroundResource(
-                    if (valid) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
+                btnSendCode.setTextColor(
+                    if (valid) Color.WHITE else Color.parseColor("#BDBDBD")
+                )
+                btnSendCode.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                        if (valid) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+                    )
                 )
             }
 
@@ -105,7 +112,16 @@ class SignupActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {
                 val valid = s?.length == 6
                 btnCheckCode.isEnabled = valid
-                btnCheckCode.setBackgroundResource(if (valid) R.drawable.btn_login else R.drawable.ic_roundedbox_dark)
+
+                btnCheckCode.setTextColor(
+                    if (valid) Color.WHITE else Color.parseColor("#BDBDBD")
+                )
+
+                btnCheckCode.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                        if (valid) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+                    )
+                )
             }
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -188,10 +204,19 @@ class SignupActivity : AppCompatActivity() {
         }
     }
     // 다음 버튼 활성화 조건 확인
-    private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: Button) {
+    private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: MaterialButton) {
         val enabled = isVerified && cbTerms.isChecked && cbPrivacy.isChecked
         btnNext.isEnabled = enabled
-        btnNext.setBackgroundResource(if (enabled) R.drawable.btn_login else R.drawable.ic_roundedbox_dark)
+
+        btnNext.setTextColor(
+            if (enabled) Color.WHITE else Color.parseColor("#BDBDBD")
+        )
+
+        btnNext.setBackgroundTintList(
+            ColorStateList.valueOf(
+                if (enabled) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+            )
+        )
     }
 
     // 인증 타이머 시작 (180초)
