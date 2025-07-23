@@ -48,18 +48,24 @@
         app:layout_constraintBottom_toBottomOf="@id/textYear"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- 연간 달력 그리드 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/yearRecyclerView"
+    <!-- 연간 달력 영역 -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/calendarScrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="8dp"
-        app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-        app:spanCount="3"
+        android:fillViewport="true"
         app:layout_constraintTop_toBottomOf="@id/textYear"
         app:layout_constraintBottom_toTopOf="@id/bottomInputArea"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <GridLayout
+            android:id="@+id/yearContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:padding="8dp" />
+    </androidx.core.widget.NestedScrollView>
 
     <!-- 하단 입력창 -->
     <androidx.constraintlayout.widget.ConstraintLayout
