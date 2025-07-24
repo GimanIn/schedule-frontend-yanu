@@ -63,7 +63,7 @@
         android:layout_marginEnd="8dp"
         />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_overlap"
         android:layout_width="wrap_content"
         android:layout_height="35dp"
@@ -114,7 +114,7 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 사용할 비밀번호 입력창 만들기 -->
-    <EditText
+    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/password"
         android:layout_width="358dp"
         android:layout_height="33dp"
@@ -186,7 +186,7 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- 비밀번호 확인 입력창 만들기 -->
-    <EditText
+    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/re_password"
         android:layout_width="358dp"
         android:layout_height="33dp"
@@ -246,7 +246,7 @@
     </LinearLayout>
 
     <!-- 하단 '회원가입 하기' 버튼 -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_finish"
         android:layout_width="0dp"
         android:layout_height="50dp"

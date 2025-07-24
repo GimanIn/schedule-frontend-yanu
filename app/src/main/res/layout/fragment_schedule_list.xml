@@ -108,6 +108,16 @@
                 android:textStyle="bold"/>
 
             <ImageButton
+                android:id="@+id/shareScheduleButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_share"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_toStartOf="@id/editScheduleButton"
+                android:layout_centerVertical="true"
+                android:contentDescription="공유하기"/>
+
+            <ImageButton
                 android:id="@+id/editScheduleButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
@@ -135,10 +145,16 @@
             android:paddingTop="8dp"
             android:contentDescription="@string/timeline_description">
 
-            <FrameLayout
+            <RelativeLayout
                 android:id="@+id/timelineContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
+                <FrameLayout
+                    android:id="@+id/scheduleBlocksContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="40dp"/>
 
                 <LinearLayout
                     android:id="@+id/hoursContainer"
@@ -146,11 +162,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"/>
 
-                <FrameLayout
-                    android:id="@+id/scheduleBlocksContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
-            </FrameLayout>
+            </RelativeLayout>
         </ScrollView>
 
         <LinearLayout
@@ -167,11 +179,9 @@
                     android:layout_height="wrap_content"
                     android:text="구분 색상"
                     android:layout_centerVertical="true"/>
-                <LinearLayout
-                    android:id="@+id/colorPaletteLayout"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                <View
+                    android:id="@+id/currentColorView"
+                    style="@style/ColorPickerCircle.Small"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"/>
             </RelativeLayout>
