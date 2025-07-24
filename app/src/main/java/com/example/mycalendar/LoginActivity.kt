@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
+import android.util.Log
 
 class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,13 +19,18 @@ class LoginActivity : AppCompatActivity() {
         val findInfoText = findViewById<TextView>(R.id.txt_find_account)
         val autoLoginCheckbox = findViewById<CheckBox>(R.id.checkbox_autologin)
         val backButton = findViewById<ImageButton>(R.id.btn_back)
-        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-        val autoLogin = prefs.getBoolean("auto_login", false)
 
-        if (autoLogin) {
+        // 자동로그인
+        val sharedPref = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        val autoLogin = sharedPref.getBoolean("auto_login", false)
+        val fromLogout = intent.getBooleanExtra("fromLogout", false)
+
+        Log.d("LoginCheck", "autoLogin=$autoLogin, fromLogout=$fromLogout")
+
+        if (autoLogin && !fromLogout) {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
-            finish() // 로그인 액티비티 종료
+            finish()
         }
 
         // 로그인 버튼 클릭
@@ -37,12 +44,11 @@ class LoginActivity : AppCompatActivity() {
 
                 if (autoLogin) {
                     // 자동로그인 정보 저장
-                    val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-                    val editor = prefs.edit()
+                    val editor = sharedPref.edit()
                     editor.putString("user_id", id)
                     editor.putString("user_pw", pw)
-                    editor.putBoolean("auto_login", true)
-                    editor.apply()
+                    editor.putBoolean("autoLogin", true)
+                    editor.commit()
                 }
 
                 // 메인 화면으로 이동하는 Intent 추가

@@ -8,6 +8,7 @@ import android.widget.*
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
+import android.content.res.ColorStateList
 
 class SignupActivity2 : AppCompatActivity() {
     // 아이디 입력
@@ -52,9 +53,11 @@ class SignupActivity2 : AppCompatActivity() {
 
             // 입력 길이가 6자 이상이면 버튼 활성화
             btnCheckId.isEnabled = id.length >= 6
-            // 버튼 색상 변경 (예: 회색 → 남색)
-            btnCheckId.setBackgroundResource(
-                if (btnCheckId.isEnabled) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
+            val colorEnabled = Color.parseColor("#1C2444")   // 남색
+            val colorDisabled = Color.parseColor("#999CAA")  // 회색
+
+            btnCheckId.setBackgroundTintList(
+                ColorStateList.valueOf(if (btnCheckId.isEnabled) colorEnabled else colorDisabled)
             )
 
             // 아이디 입력이 바뀔 때마다 메시지 숨기기
@@ -220,8 +223,12 @@ class SignupActivity2 : AppCompatActivity() {
             val canRegister = isIdAvailable && isPwValid && isPwMatch
 
             btnFinish.isEnabled = canRegister
-            btnFinish.setBackgroundResource(
-                if (canRegister) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
+
+            val colorEnabled = Color.parseColor("#1C2444")
+            val colorDisabled = Color.parseColor("#999CAA")
+
+            btnFinish.setBackgroundTintList(
+                ColorStateList.valueOf(if (canRegister) colorEnabled else colorDisabled)
             )
         }
     }

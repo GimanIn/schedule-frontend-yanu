@@ -30,6 +30,18 @@ import com.google.android.material.appbar.MaterialToolbar
 import java.time.LocalDateTime
 import androidx.appcompat.app.AlertDialog
 import com.example.mycalendar.Schedule
+import android.Manifest
+import android.content.pm.PackageManager
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.button.MaterialButton
+import android.app.PendingIntent
+import android.app.NotificationManager
+import android.app.NotificationChannel
+import android.content.Context
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
@@ -63,6 +75,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        createNotificationChannel()
+
+        sendTestNotification()
 
         // 1. 모든 UI 요소를 먼저 찾아서 변수에 할당합니다. 수정함.
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
@@ -120,7 +136,21 @@ class MainActivity : AppCompatActivity() {
                     startActivity(Intent(this, MypageActivity::class.java))
                     true
                 }
-
+                R.id.nav_settings -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                            //권한이 없을 경우 → 다이얼로그로 유도
+                            showNotificationDialog()
+                        } else {
+                            // 이미 권한 있음 → 설정 화면으로 이동
+                            goToAppNotificationSettings()
+                        }
+                    } else {
+                        goToAppNotificationSettings()
+                    }
+                    true
+                }
                 else -> false
             }
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -425,6 +455,85 @@ class MainActivity : AppCompatActivity() {
 
     private fun getSchedulesForDate(date: LocalDate): List<Schedule> {
         return schedules[date] ?: emptyList()
+    }
+    private fun goToAppNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
+    }
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                Toast.makeText(this, "알림 권한이 허용되었습니다.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "알림이 꺼져있어요. 설정 > 알림에서 직접 켜주세요.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    // 설정 인텐트로 이동
+    private fun showNotificationDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_notification_permission, null)
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.show()
+
+        val btnSettings = dialogView.findViewById<MaterialButton>(R.id.btnToSettings)
+        btnSettings.setOnClickListener {
+            dialog.dismiss()
+            goToAppNotificationSettings() // ← 설정 인텐트로 이동
+        }
+    }
+    // 상단 알림
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "channel_id", // ← sendTestNotification()에서 쓰는 ID와 동일해야 함
+                "일정 알림 채널",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "일정을 알려주는 푸시 알림 채널입니다."
+            }
+
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+    private fun sendTestNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    1001
+                )
+                return // 권한 없으면 여기서 끝
+            }
+        }
+        // 알림 인텐트 설정
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        // 알림 구성
+        val builder = NotificationCompat.Builder(this, "channel_id")
+            .setSmallIcon(R.drawable.ic_logo)
+            .setContentTitle("일정 알림")
+            .setContentText("내일 스터디 일정이 있어요.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+        // 알림 전송
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(2001, builder.build())
     }
 }
 
