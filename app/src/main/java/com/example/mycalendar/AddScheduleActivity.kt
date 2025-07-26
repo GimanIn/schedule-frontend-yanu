@@ -157,6 +157,7 @@ class AddScheduleActivity : AppCompatActivity() {
                 if (e1 == null || e2 == null) return false
 
                 val diffX = e2.x - e1.x
+                val diffY = e2.y - e1.y
 
                 if (
                     kotlin.math.abs(diffX) > SWIPE_THRESHOLD &&
