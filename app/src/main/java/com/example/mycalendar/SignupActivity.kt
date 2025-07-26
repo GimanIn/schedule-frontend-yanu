@@ -76,7 +76,6 @@ class SignupActivity : AppCompatActivity() {
 
         etName.addTextChangedListener(inputWatcher)
         etPhone.addTextChangedListener(inputWatcher)
-        etPhone.setTextColor(Color.BLACK)
 
         etAuthCode.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {

@@ -1,10 +1,10 @@
 package com.example.mycalendar
 
+
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -25,10 +25,8 @@ import com.example.mycalendar.databinding.ActivityMainBinding
 import com.example.mycalendar.mapper.ScheduleMapper
 import com.example.mycalendar.model.*
 import com.example.mycalendar.network.RetrofitClient
-import com.example.mycalendar.network.ApiService
 import com.google.android.material.navigation.NavigationView
-
-
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -37,8 +35,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -67,13 +63,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val editScheduleLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            fetchSchedulesForDate(selectedDate)
-        }
-    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -196,11 +186,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    fun removeSchedule(schedule: Schedule) {
-        val list = schedules[schedule.scheduledDate]
-        list?.remove(schedule)
-        updateCalendar()
-    }
 
     fun addSchedule(schedule: Schedule) {
         val key = schedule.scheduledDate
@@ -268,10 +253,7 @@ class MainActivity : AppCompatActivity() {
                     val list = ScheduleMapper.toSchedule(response.body()?.data ?: emptyList())
                     schedules.clear()
                     list.forEach { schedule ->
-                        val key = schedule.scheduledDate
-                        schedules[key] = (schedules[key] ?: mutableListOf()).apply {
-                            add(schedule)
-                        }
+                        addScheduleToMap(schedule)  // ✅ startDate ~ endDate 사이 날짜에 모두 저장
                     }
                     updateCalendar()
                 } else {
@@ -351,20 +333,19 @@ class MainActivity : AppCompatActivity() {
 
         // 2. 캘린더(RecyclerView)의 터치 이벤트를 제스처 감지기가 처리하도록 설정합니다.
         // 이 방법은 클릭과 스와이프를 모두 온전히 지원합니다.
-        calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
-            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                gestureDetector.onTouchEvent(e)
-                return false
-            }
 
-            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
-            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
-        })
         // --- 여기까지 추가 ---
         updateCalendar() // 앱 실행 시 첫 화면 로드
     }
 
-
+    // --- 👇 2. AddScheduleActivity를 '수정 모드'로 여는 함수를 추가합니다. ---
+    fun openEditScheduleActivity(schedule: Schedule, isCopy: Boolean) {
+        val intent = Intent(this, AddScheduleActivity::class.java).apply {
+            putExtra("scheduleToEdit", schedule)
+            putExtra("isCopyMode", isCopy)
+        }
+        editScheduleLauncher.launch(intent)
+    }
 
     private fun updateCalendar() {
         toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
@@ -386,11 +367,69 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+
     private fun openAddScheduleActivity(date: LocalDate) {
         val intent = Intent(this, AddScheduleActivity::class.java)
         intent.putExtra("selectedDate", date)
         addScheduleLauncher.launch(intent)
     }
+    // --- 👇 1. 수정 전용 결과 처리기를 새로 추가합니다. ---
+    val editScheduleLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            // 1. "updatedSchedule" 키로 수정된 일정이 있는지 먼저 확인
+            val updatedSchedule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                data?.getSerializableExtra("updatedSchedule", Schedule::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                data?.getSerializableExtra("updatedSchedule") as? Schedule
+            }
+
+            if (updatedSchedule != null) {
+                // 수정된 일정이 있다면 -> 기존 것 삭제 후 새로 추가
+                removeSchedule(updatedSchedule)
+                addSchedule(updatedSchedule)
+            } else {
+                // 2. "updatedSchedule"가 없다면, "newSchedule" 키로 복사된 새 일정이 있는지 확인
+                val copiedSchedule =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        data?.getSerializableExtra("newSchedule", Schedule::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        data?.getSerializableExtra("newSchedule") as? Schedule
+                    }
+                if (copiedSchedule != null) {
+                    // 복사된 새 일정이 있다면 -> 그냥 추가
+                    addSchedule(copiedSchedule)
+                }
+            }
+        }
+    }
+
+    fun removeSchedule(scheduleToRemove: Schedule) {
+        val entries = schedules.iterator()
+        while (entries.hasNext()) {
+            val entry = entries.next()
+            val scheduleList = entry.value
+
+            scheduleList.removeAll {
+                // ID가 있으면 ID 기준, 없으면 날짜/시간/제목 비교
+                (scheduleToRemove.id != null && it.id == scheduleToRemove.id) ||
+                        (scheduleToRemove.id == null &&
+                                it.title == scheduleToRemove.title &&
+                                it.startDate == scheduleToRemove.startDate &&
+                                it.startTime == scheduleToRemove.startTime)
+            }
+
+            if (scheduleList.isEmpty()) {
+                entries.remove()
+            }
+        }
+    }
+
 
     private fun openDayView() {
         val schedulesForDay = getSchedulesForDate(LocalDate.now())

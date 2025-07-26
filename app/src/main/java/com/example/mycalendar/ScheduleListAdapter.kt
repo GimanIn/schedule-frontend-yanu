@@ -29,7 +29,7 @@ class ScheduleListAdapter(
 
     inner class ScheduleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val colorBar: View = itemView.findViewById(R.id.colorBarView)
-        val timeText: TextView = itemView.findViewById(R.id.timeTextView)
+
         val titleText: TextView = itemView.findViewById(R.id.titleTextView)
         val timeRangeText: TextView = itemView.findViewById(R.id.timeRangeTextView)
 
@@ -43,8 +43,7 @@ class ScheduleListAdapter(
 
             // 시간 표시
             if (startDateTime != null) {
-                timeText.text = startDateTime.format(timeFormatter)
-                timeText.visibility = View.VISIBLE
+
 
                 if (endDateTime != null) {
                     timeRangeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
@@ -53,7 +52,7 @@ class ScheduleListAdapter(
                     timeRangeText.visibility = View.GONE
                 }
             } else {
-                timeText.visibility = View.GONE
+
                 timeRangeText.visibility = View.GONE
             }
 

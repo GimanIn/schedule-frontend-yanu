@@ -9,6 +9,13 @@ import android.widget.*
 import androidx.fragment.app.DialogFragment
 import android.graphics.drawable.ColorDrawable
 import java.time.LocalTime
+import android.graphics.drawable.GradientDrawable
+import java.time.format.DateTimeFormatter
+import android.net.Uri
+
+
+
+
 
 
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -137,8 +144,8 @@ class ScheduleListDialog(
                         color = DEFAULT_COLOR,
                         startDate = date,
                         endDate = date,
-                        startTime = null,
-                        endTime = null,
+                        startTime = LocalTime.of(9, 0),
+                        endTime = LocalTime.of(10, 0),
                         isConfirmed = false,
                         alarmOn = false,
                         isDeleted = false,
@@ -171,6 +178,69 @@ class ScheduleListDialog(
 
         }
     }
+    private fun addScheduleBlockToTimeline(schedule: Schedule) {
+        scheduleBlocksContainer.removeAllViews()
+
+        // LocalDateTime으로 변환 (날짜와 시간이 모두 있을 경우)
+        val startDateTime = if (schedule.startTime != null) {
+            schedule.startDate.atTime(schedule.startTime)
+        } else null
+
+        val endDateTime = if (schedule.endTime != null) {
+            schedule.endDate.atTime(schedule.endTime)
+        } else null
+
+        // --- 하루 종일 일정 처리 ---
+        if (startDateTime == null || endDateTime == null) {
+            val inflater = LayoutInflater.from(context)
+            val scheduleBlockView = inflater.inflate(R.layout.item_schedule_block, scheduleBlocksContainer, false) as LinearLayout
+
+            val blockTitleText = scheduleBlockView.findViewById<TextView>(R.id.blockTitleText)
+            val blockTimeText = scheduleBlockView.findViewById<TextView>(R.id.blockTimeText)
+
+            blockTitleText.text = schedule.title
+            blockTimeText.text = "하루 종일"
+
+            (scheduleBlockView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+            val params = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            scheduleBlocksContainer.addView(scheduleBlockView, params)
+            return
+        }
+
+        // 시간 기반 블록 위치 계산
+        val startHour = startDateTime.hour
+        val startMinute = startDateTime.minute
+        val endHour = endDateTime.hour
+        val endMinute = endDateTime.minute
+
+        val startTotalHours = startHour + startMinute / 60.0
+        val endTotalHours = endHour + endMinute / 60.0
+        val durationHours = endTotalHours - startTotalHours
+        if (durationHours <= 0) return
+
+        val density = resources.displayMetrics.density
+        val hourHeightPx = (hourHeightDp * density).toInt()
+        val topMargin = (startTotalHours * hourHeightPx).toInt()
+        val height = (durationHours * hourHeightPx).toInt()
+
+        val inflater = LayoutInflater.from(context)
+        val scheduleBlockView = inflater.inflate(R.layout.item_schedule_block, scheduleBlocksContainer, false) as LinearLayout
+
+        val blockTitleText = scheduleBlockView.findViewById<TextView>(R.id.blockTitleText)
+        val blockTimeText = scheduleBlockView.findViewById<TextView>(R.id.blockTimeText)
+
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+        blockTitleText.text = schedule.title
+        blockTimeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
+
+        (scheduleBlockView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+        val params = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, height)
+        params.topMargin = topMargin
+        scheduleBlocksContainer.addView(scheduleBlockView, params)
+    }
+
 
     // ✅ 따로 분리해서 오류 방지
     private fun setupDetailViewListeners() {
@@ -185,31 +255,175 @@ class ScheduleListDialog(
     private fun showDetailView(schedule: Schedule) {
         listViewContainer.visibility = View.GONE
         detailViewContainer.visibility = View.VISIBLE
-        val categoryText = schedule.category?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
-        val locationText = schedule.location?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
-        val memoText = schedule.memo?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
+        val shareScheduleButton =
+            detailViewContainer.findViewById<ImageButton>(R.id.shareScheduleButton)
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
+        detailDateText.text = date.format(dateFormatter)
+        val detailsText = StringBuilder()
+        if (!schedule.category.isNullOrBlank()) {
+            detailsText.append("카테고리: ${schedule.category}\n")
+        }
+        if (!schedule.location.isNullOrBlank()) {
+            detailsText.append("장소: ${schedule.location}\n")
+        }
 
+        if (schedule.memo.isNotBlank()) {
+            detailsText.append("메모: ${schedule.memo}")
+        }
+        detailMemoText.text = detailsText.toString().trim()
         detailAlarmSwitch.isChecked = schedule.alarmOn
 
-        detailMemoText.text = listOf(
-            if (categoryText.isNotEmpty()) "카테고리: $categoryText" else null,
-            if (locationText.isNotEmpty()) "장소: $locationText" else null,
-            if (memoText.isNotEmpty()) "메모: $memoText" else null
-        ).filterNotNull().joinToString("\n")
-    }
-    override fun onStart() {
-        super.onStart()
-        dialog?.window?.let { window ->
-            val displayMetrics = resources.displayMetrics
-            val height = (displayMetrics.heightPixels * 0.7).toInt()
-            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
-            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        populateTimeline()
+        addScheduleBlockToTimeline(schedule)
+
+        val currentColorView = detailViewContainer.findViewById<View>(R.id.currentColorView)
+        (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+
+        currentColorView.setOnClickListener { colorDotView ->
+            val inflater = LayoutInflater.from(requireContext())
+            val popupView = inflater.inflate(R.layout.popup_color_palette, null)
+            val popupWindow = PopupWindow(
+                popupView,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                true
+            )
+            popupWindow.elevation = 20f
+
+            val colors = listOf(
+                Pair(popupView.findViewById<View>(R.id.palette_color_1), "#4285F4"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_2), "#34A853"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_3), "#EA4335"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_4), "#FFBE00"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_5), "#A142F4"),
+                Pair(popupView.findViewById<View>(R.id.palette_color_6), "#EB6E94")
+            )
+
+            colors.forEach { (colorView, colorHex) ->
+                (colorView.background.mutate() as? GradientDrawable)?.setColor(
+                    Color.parseColor(
+                        colorHex
+                    )
+                )
+                colorView.setOnClickListener {
+                    schedule.color = Color.parseColor(colorHex)
+                    (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+                    addScheduleBlockToTimeline(schedule) // 1. 타임라인 블록을 새 색상으로 다시 그립니다.
+                    onDataChanged() // 2. MainActivity에 데이터가 변경되었음을 즉시 알립니다.
+                    popupWindow.dismiss()
+                }
+            }
+            popupWindow.showAsDropDown(colorDotView)
+        }
+        detailAlarmSwitch.setOnCheckedChangeListener { _, isChecked ->
+            schedule.alarmOn= isChecked
+            Toast.makeText(context, "알림 설정이 변경되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+
+        editScheduleButton.setOnClickListener {
+            (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
+            dismiss()
+        }
+
+        shareScheduleButton.setOnClickListener {
+            showShareOptionsDialog(schedule, it)
+        }
+
+        deleteButton.setOnClickListener {
+            val confirmationDialog = DeleteConfirmationDialog {
+                val positionToRemove = dailySchedules.indexOf(schedule)
+                if (positionToRemove != -1) {
+                    (activity as? MainActivity)?.removeSchedule(schedule)
+                    dailySchedules.removeAt(positionToRemove)
+                    scheduleListAdapter.notifyItemRemoved(positionToRemove)
+                }
+                listViewContainer.visibility = View.VISIBLE
+                detailViewContainer.visibility = View.GONE
+                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            }
+            confirmationDialog.show(parentFragmentManager, "DeleteConfirmationDialog")
         }
     }
 
 
-    override fun onDismiss(dialog: DialogInterface) {
-        super.onDismiss(dialog)
-        if (dataChanged) onDataChanged()
+    fun showShareOptionsDialog(schedule: Schedule, anchorView: View) {
+        val inflater = LayoutInflater.from(requireContext())
+        val popupView = inflater.inflate(R.layout.dialog_share_options, null)
+        val shareAsTextButton = popupView.findViewById<TextView>(R.id.shareAsTextButton)
+        val shareAsLinkButton = popupView.findViewById<TextView>(R.id.shareAsLinkButton)
+
+        val popupWindow = PopupWindow(popupView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true)
+        popupWindow.elevation = 20f
+
+        shareAsTextButton.setOnClickListener {
+            val formatter = DateTimeFormatter.ofPattern("M월 d일 a hh:mm", Locale.KOREA)
+            val scheduleText = """
+                [일정 공유]
+                📌 제목: ${schedule.title}
+                🗓️ 날짜 & 시간: ${schedule.startDateTime?.format(formatter)} ~ ${schedule.endDateTime?.format(formatter)}
+                📍 분야: ( ${schedule.category} ) / 장소: ( ${schedule.location} )
+                📝 메모: ${schedule.memo}
+            """.trimIndent()
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("schedule", scheduleText)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "클립보드에 복사되었습니다.", Toast.LENGTH_SHORT).show()
+            popupWindow.dismiss()
+        }
+
+        shareAsLinkButton.setOnClickListener {
+            val startDateTime = schedule.startDateTime
+            val endDateTime = schedule.endDateTime
+            if(startDateTime == null || endDateTime == null){
+                Toast.makeText(context, "시간이 지정된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val deepLinkUri = Uri.parse("https://mycalendar.example.com/schedule").buildUpon()
+                .appendQueryParameter("title", schedule.title)
+                .appendQueryParameter("start", startDateTime.toString())
+                .appendQueryParameter("end", endDateTime.toString())
+                .appendQueryParameter("color", schedule.color.toString())
+                .appendQueryParameter("category", schedule.category)
+                .appendQueryParameter("location", schedule.location)
+                .appendQueryParameter("memo", schedule.memo)
+                .build()
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, deepLinkUri.toString())
+            }
+            startActivity(Intent.createChooser(intent, "일정 공유"))
+            popupWindow.dismiss()
+        }
+        popupWindow.showAsDropDown(anchorView)
     }
-}
+    private fun populateTimeline() {
+        hoursContainer.removeAllViews()
+        val inflater = LayoutInflater.from(context)
+        for (hour in 0..23) {
+            val hourLineView = inflater.inflate(R.layout.item_hour_line, hoursContainer, false)
+            val hourTextView = hourLineView.findViewById<TextView>(R.id.hourTextView)
+            hourTextView.text = String.format("%02d:00", hour)
+            hoursContainer.addView(hourLineView)
+        }
+    }
+
+
+    override fun onStart() {
+            super.onStart()
+            dialog?.window?.let { window ->
+                val displayMetrics = resources.displayMetrics
+                val height = (displayMetrics.heightPixels * 0.7).toInt()
+                window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
+                window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            }
+    }
+
+
+    override fun onDismiss(dialog: DialogInterface) {
+            super.onDismiss(dialog)
+            if (dataChanged) onDataChanged()
+        }
+    }
