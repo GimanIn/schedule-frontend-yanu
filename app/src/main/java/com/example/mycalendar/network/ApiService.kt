@@ -35,6 +35,13 @@ interface ApiService {
     @POST("/api/schedules")
     fun createSchedule(@Body request: ScheduleRequest): Call<ApiResponse<ScheduleResponse>> // 일정 추가
 
+    // ✅ ✅ ✅ 여기에 추가하세요!
+    @GET("/api/schedules/range")
+    fun getSchedulesByDateRange(
+        @Query("startDate") startDate: String,
+        @Query("endDate") endDate: String
+    ): Call<ApiResponse<List<ScheduleResponse>>>
+
     @PUT("/api/schedules/{id}")
     fun updateSchedule(@Path("id") scheduleId: Long, @Body request: ScheduleRequest): Call<ApiResponse<ScheduleResponse>> // 일정 수정
 

@@ -1,3 +1,4 @@
+// ✅ ScheduleListDialog.kt 전체 수정본
 package com.example.mycalendar
 
 import android.content.*
@@ -80,7 +81,7 @@ class ScheduleListDialog(
             dailySchedules,
             childFragmentManager,
             { schedule -> showDetailView(schedule) },
-            { schedule -> dismiss() },  // 필요시 openEditScheduleActivity 다시 활성화
+            { schedule -> dismiss() },
             { schedule -> dismiss() },
             { schedule, position ->
                 (activity as? MainActivity)?.removeSchedule(schedule)
@@ -97,6 +98,28 @@ class ScheduleListDialog(
             val title = scheduleEditTextDialog.text.toString().trim()
             if (title.isNotEmpty()) {
                 try {
+                    // ✅ 1. 서버 전송용 request 객체 생성
+                    val request = ScheduleRequest(
+                        title = title,
+                        memo = EMPTY_STRING,
+                        location = EMPTY_STRING,
+                        category = EMPTY_STRING,
+                        scheduledDate = date.toString(),
+                        startDate = date.toString(),
+                        endDate = date.toString(),
+                        startTime = null,
+                        endTime = null,
+                        allDay = false,
+                        isConfirmed = false,
+                        color = "#4285F4",
+                        alarmOn = false,
+                        copiedFromScheduleId = null
+                    )
+
+                    // ✅ 2. 서버로 일정 추가 요청
+                    (activity as? MainActivity)?.addSchedule(request)
+
+                    // ✅ 3. UI용 Schedule 생성 후 리스트에 추가
                     val newSchedule = Schedule(
                         id = 0L,
                         title = title,
@@ -117,32 +140,13 @@ class ScheduleListDialog(
                         scheduledDate = date
                     )
 
-                    // UI 추가
                     dailySchedules.add(newSchedule)
                     scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
-                    (activity as? MainActivity)?.addSchedule(newSchedule)
 
-                    // 서버 전송용 ScheduleRequest 생성
-                    val request = ScheduleRequest(
-                        title = title,
-                        memo = EMPTY_STRING,
-                        location = EMPTY_STRING,
-                        category = EMPTY_STRING,
-                        scheduledDate = date.toString(),
-                        startDate = date.toString(),
-                        endDate = date.toString(),
-                        startTime = null,
-                        endTime = null,
-                        allDay = false,
-                        isConfirmed = false,
-                        color = "#4285F4",
-                        alarmOn = false,
-                        copiedFromScheduleId = null
-                    )
+                    // ✅ 4. 달력 전체 새로고침
+                    (activity as? MainActivity)?.fetchAllSchedulesForMonth()
 
-                    (activity as? MainActivity)?.addSchedule(request)
-
-                    // UI 초기화
+                    // ✅ 5. 입력 초기화 및 콜백
                     scheduleEditTextDialog.text.clear()
                     dataChanged = true
                     onDataChanged()
@@ -157,6 +161,7 @@ class ScheduleListDialog(
         }
     }
 
+    // ✅ 따로 분리해서 오류 방지
     private fun setupDetailViewListeners() {
         backToListButton.setOnClickListener {
             listViewContainer.visibility = View.VISIBLE
@@ -165,6 +170,7 @@ class ScheduleListDialog(
         }
     }
 
+    // ✅ 이것도 밖으로 빼야 오류 안 남
     private fun showDetailView(schedule: Schedule) {
         val categoryText = schedule.category?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
         val locationText = schedule.location?.takeIf { it.isNotBlank() } ?: EMPTY_STRING

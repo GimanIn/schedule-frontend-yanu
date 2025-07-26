@@ -30,16 +30,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
-import com.example.mycalendar.network.ApiService
-import com.example.mycalendar.model.ScheduleRequest
-import com.example.mycalendar.model.ApiResponse
-import com.example.mycalendar.model.ScheduleResponse
-import com.example.mycalendar.model.AiSummaryResponse
-import com.example.mycalendar.model.LoginResponse
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -58,7 +48,12 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            fetchSchedulesForDate(selectedDate) // ✅ request 제거
+            val newSchedule = result.data?.getSerializableExtra("newSchedule") as? Schedule
+            if (newSchedule != null) {
+                addScheduleToMap(newSchedule) // ✅ 바로 UI에 반영
+            } else {
+                fetchAllSchedulesForMonth() // 혹시 null이면 전체 다시 불러오기
+            }
         }
     }
 
@@ -66,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            fetchSchedulesForDate(selectedDate) // ✅ request 제거
+            fetchSchedulesForDate(selectedDate)
         }
     }
 
@@ -74,9 +69,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // new: RetrofitClient 초기화
-        RetrofitClient.init(this) // new
-
+        RetrofitClient.init(this)
         prefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
 
         toolbar = findViewById(R.id.toolbar)
@@ -86,11 +79,9 @@ class MainActivity : AppCompatActivity() {
         val searchButton: ImageView = findViewById(R.id.searchButton)
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
 
-        Log.d("MainActivity", "🧪 저장된 access_token: ${prefs.getString(LoginActivity.KEY_ACCESS_TOKEN, "없음")}")
-
         checkLoginAndRefreshTokenIfNeeded {
             setupCalendar()
-            fetchSchedulesForDate(selectedDate) // ✅ FIXED
+            fetchAllSchedulesForMonth()
         }
 
         setSupportActionBar(toolbar)
@@ -158,96 +149,163 @@ class MainActivity : AppCompatActivity() {
                     copiedFromScheduleId = copiedFromScheduleId
                 )
 
-                RetrofitClient.apiService.createSchedule(request)
-                    .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
-                        override fun onResponse(
-                            call: Call<ApiResponse<ScheduleResponse>>,
-                            response: Response<ApiResponse<ScheduleResponse>>
-                        ) {
-                            if (response.isSuccessful && response.body()?.success == true) {
-                                fetchSchedulesForDate(selectedDate)
-                                Toast.makeText(this@MainActivity, "일정 추가됨", Toast.LENGTH_SHORT).show()
-                                scheduleEditText.text.clear()
-                            } else {
-                                Toast.makeText(this@MainActivity, "일정 저장 실패", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-
-                        override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
-                            Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
-                        }
-                    })
+                addSchedule(request)
+                scheduleEditText.text.clear()
             } else {
                 openAddScheduleActivity(selectedDate)
             }
         }
 
-        findViewById<ImageButton>(R.id.aiButton).setOnClickListener {
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
-            val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
-            val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 == null) return false
+                val diffX = e2.x - e1.x
+                if (Math.abs(diffX) > 100 && Math.abs(velocityX) > 100) {
+                    selectedDate = if (diffX > 0) selectedDate.minusMonths(1) else selectedDate.plusMonths(1)
+                    fetchAllSchedulesForMonth()
+                    updateCalendar()
+                    return true
+                }
+                return false
+            }
+        })
 
-            val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
-            summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
+        calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                gestureDetector.onTouchEvent(e)
+                return false
+            }
 
-            RetrofitClient.apiService.getAiSummary(LocalDate.now().toString())
-                .enqueue(object : Callback<ApiResponse<AiSummaryResponse>> {
-                    override fun onResponse(call: Call<ApiResponse<AiSummaryResponse>>, response: Response<ApiResponse<AiSummaryResponse>>) {
-                        summaryContentText.text = response.body()?.data?.summaryText ?: "요약을 가져오지 못했습니다."
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
+    }
+
+    fun removeSchedule(schedule: Schedule) {
+        val list = schedules[schedule.scheduledDate]
+        list?.remove(schedule)
+        updateCalendar()
+    }
+
+    fun addSchedule(schedule: Schedule) {
+        val key = schedule.scheduledDate
+        val list = schedules[key] ?: mutableListOf()
+        list.add(schedule)
+        schedules[key] = list
+        updateCalendar()
+    }
+
+    fun addSchedule(request: ScheduleRequest) {
+        RetrofitClient.apiService.createSchedule(request)
+            .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<ScheduleResponse>>,
+                    response: Response<ApiResponse<ScheduleResponse>>
+                ) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val scheduleResponse = response.body()?.data
+                        val schedule = scheduleResponse?.let { ScheduleMapper.toSchedule(it) }
+
+                        // ✅ 바로 UI에 반영
+                        if (schedule != null) {
+                            addScheduleToMap(schedule)  // ✅ NEW
+                        }
+
+                        Toast.makeText(this@MainActivity, "일정 추가 성공", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "일정 추가 실패", Toast.LENGTH_SHORT).show()
                     }
+                }
 
-                    override fun onFailure(call: Call<ApiResponse<AiSummaryResponse>>, t: Throwable) {
-                        summaryContentText.text = "서버 오류 발생: ${t.localizedMessage}"
-                    }
-                })
+                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
 
-            AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setPositiveButton("닫기", null)
-                .show()
+    // ✅ 여기에 추가!
+    fun addScheduleToMap(schedule: Schedule) {
+        var current = schedule.startDate
+        val end = schedule.endDate
+
+        while (!current.isAfter(end)) {
+            if (!schedules.containsKey(current)) {
+                schedules[current] = mutableListOf()
+            }
+            schedules[current]?.add(schedule)
+            current = current.plusDays(1)
         }
 
-        // 딥링크 처리
-        intent?.data?.let { uri ->
-            if (intent.action == Intent.ACTION_VIEW && uri.scheme == "mycalendar" && uri.host == "schedule") {
-                try {
-                    val request = ScheduleRequest(
-                        title = uri.getQueryParameter("title") ?: "제목 없음",
-                        memo = uri.getQueryParameter("memo") ?: "",
-                        location = uri.getQueryParameter("location") ?: "",
-                        category = uri.getQueryParameter("category") ?: "",
-                        scheduledDate = uri.getQueryParameter("start") ?: selectedDate.toString(),
-                        startDate = uri.getQueryParameter("start") ?: selectedDate.toString(),
-                        endDate = uri.getQueryParameter("end") ?: selectedDate.toString(),
-                        startTime = "09:00",
-                        endTime = "10:00",
-                        allDay = false,
-                        isConfirmed = true,
-                        color = uri.getQueryParameter("color") ?: "#4285F4",
-                        alarmOn = true,
-                        copiedFromScheduleId = copiedFromScheduleId
-                    )
+        updateCalendar()
+    }
 
-                    RetrofitClient.apiService.createSchedule(request)
-                        .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
-                            override fun onResponse(call: Call<ApiResponse<ScheduleResponse>>, response: Response<ApiResponse<ScheduleResponse>>) {
-                                if (response.isSuccessful && response.body()?.success == true) {
-                                    fetchSchedulesForDate(selectedDate)
-                                    Toast.makeText(this@MainActivity, "공유된 일정이 추가되었습니다.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(this@MainActivity, "공유 일정 저장 실패", Toast.LENGTH_SHORT).show()
-                                }
-                            }
 
-                            override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
-                                Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
-                            }
-                        })
-                } catch (e: Exception) {
-                    Toast.makeText(this, "일정을 불러오는 데 실패했습니다.", Toast.LENGTH_SHORT).show()
+    fun fetchAllSchedulesForMonth() {
+        val currentYearMonth = YearMonth.from(selectedDate)
+        val startDate = currentYearMonth.atDay(1)
+        val endDate = currentYearMonth.atEndOfMonth()
+
+        RetrofitClient.apiService.getSchedulesByDateRange(
+            startDate.toString(), endDate.toString()
+        ).enqueue(object : Callback<ApiResponse<List<ScheduleResponse>>> {
+            override fun onResponse(
+                call: Call<ApiResponse<List<ScheduleResponse>>>,
+                response: Response<ApiResponse<List<ScheduleResponse>>>
+            ) {
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val list = ScheduleMapper.toSchedule(response.body()?.data ?: emptyList())
+                    schedules.clear()
+                    list.forEach { schedule ->
+                        val key = schedule.scheduledDate
+                        schedules[key] = (schedules[key] ?: mutableListOf()).apply {
+                            add(schedule)
+                        }
+                    }
+                    updateCalendar()
+                } else {
+                    Log.e("MainActivity", "❌ 전체 일정 조회 실패: ${response.code()}")
                 }
             }
-        }
+
+            override fun onFailure(call: Call<ApiResponse<List<ScheduleResponse>>>, t: Throwable) {
+                Log.e("MainActivity", "❌ 서버 오류", t)
+            }
+        })
+    }
+
+    private fun fetchSchedulesForDate(date: LocalDate) {
+        RetrofitClient.apiService.getSchedulesByDate(date.toString())
+            .enqueue(object : Callback<ApiResponse<List<ScheduleResponse>>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<List<ScheduleResponse>>>,
+                    response: Response<ApiResponse<List<ScheduleResponse>>>
+                ) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val list = ScheduleMapper.toSchedule(response.body()?.data ?: emptyList())
+                        schedules[date] = mutableListOf()
+                        list.forEach { schedule ->
+                            val key = schedule.scheduledDate
+                            if (schedules[key] == null) schedules[key] = mutableListOf()
+                            schedules[key]?.add(schedule)
+                        }
+                        updateCalendar()
+                    } else {
+                        Log.e("MainActivity", "❌ API 응답 실패: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<List<ScheduleResponse>>>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "일정 불러오기 실패", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun updateCalendar() {
+        toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
+        adapter.dayList = generateDaysInMonth(YearMonth.from(selectedDate))
+        adapter.selectedDate = selectedDate
+        adapter.notifyDataSetChanged()
+        updateScheduleHint(selectedDate)
     }
 
     private fun setupCalendar() {
@@ -271,62 +329,6 @@ class MainActivity : AppCompatActivity() {
 
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
         calendarRecyclerView.adapter = adapter
-
-        gestureDetector = GestureDetector(this, SwipeGestureListener())
-        calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
-            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                gestureDetector.onTouchEvent(e)
-                return false
-            }
-
-            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
-            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
-        })
-
-        updateCalendar()
-    }
-
-    private fun updateCalendar() {
-        toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
-        adapter.dayList = generateDaysInMonth(YearMonth.from(selectedDate))
-        adapter.selectedDate = selectedDate
-        adapter.notifyDataSetChanged()
-        updateScheduleHint(selectedDate)
-    }
-
-    private fun fetchSchedulesForDate(date: LocalDate) {
-        RetrofitClient.apiService.getSchedulesByDate(date.toString())
-            .enqueue(object : Callback<ApiResponse<List<ScheduleResponse>>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<List<ScheduleResponse>>>,
-                    response: Response<ApiResponse<List<ScheduleResponse>>>
-                ) {
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        val list = ScheduleMapper.toSchedule(response.body()?.data ?: emptyList())
-
-                        // ✅ 수정: 특정 날짜의 일정만 업데이트
-                        schedules[date] = mutableListOf()
-
-                        list.forEach { schedule ->
-                            val key = schedule.scheduledDate
-                            if (schedules[key] == null) schedules[key] = mutableListOf()
-                            schedules[key]?.add(schedule)
-                        }
-
-                        // 디버그 로그 추가
-                        Log.d("MainActivity", "📅 날짜 ${date}의 일정 ${list.size}개 로드됨")
-                        Log.d("MainActivity", "📋 전체 일정 맵 크기: ${schedules.size}")
-
-                        updateCalendar()
-                    } else{
-                        Log.e("MainActivity", "❌ API 응답 실패: ${response.code()}")
-                    }
-                }
-
-                override fun onFailure(call: Call<ApiResponse<List<ScheduleResponse>>>, t: Throwable) {
-                    Toast.makeText(this@MainActivity, "일정 불러오기 실패", Toast.LENGTH_SHORT).show()
-                }
-            })
     }
 
     private fun openAddScheduleActivity(date: LocalDate) {
@@ -395,78 +397,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun goToLogin() {
         startActivity(Intent(this, LoginActivity::class.java))
+        setResult(Activity.RESULT_OK) // 🔹 이 줄 추가
         finish()
-    }
-
-    private inner class SwipeGestureListener : GestureDetector.SimpleOnGestureListener() {
-        private val SWIPE_THRESHOLD = 100
-        private val SWIPE_VELOCITY_THRESHOLD = 100
-
-        override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-            if (e1 == null) return false
-            val diffX = e2.x - e1.x
-            if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                selectedDate = if (diffX > 0) selectedDate.minusMonths(1) else selectedDate.plusMonths(1)
-                updateCalendar()
-                return true
-            }
-            return false
-        }
-    }
-
-    fun addSchedule(schedule: ScheduleRequest) {
-        RetrofitClient.apiService.createSchedule(schedule)
-            .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<ScheduleResponse>>,
-                    response: Response<ApiResponse<ScheduleResponse>>
-                ) {
-                    if (response.isSuccessful) {
-                        fetchSchedulesForDate(selectedDate) // UI 갱신
-                    } else {
-                        Log.e("MainActivity", "일정 추가 실패: ${response.errorBody()?.string()}")
-                    }
-                }
-
-                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
-                    Log.e("MainActivity", "일정 추가 예외 발생", t)
-                }
-            })
-    }
-
-    // 새로운: Schedule 타입을 받는 함수 (UI용 Schedule 처리)
-    fun addSchedule(schedule: Schedule) {
-        // UI에서 사용할 Schedule 처리
-        schedules[selectedDate]?.add(schedule)  // 예시: 날짜에 맞는 일정 리스트에 추가
-        updateCalendar() // 일정 추가 후 캘린더 갱신
-    }
-
-    fun removeSchedule(schedule: Schedule) {
-        RetrofitClient.apiService.deleteSchedule(schedule.id ?: return)
-            .enqueue(object : Callback<ApiResponse<Unit>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<Unit>>,
-                    response: Response<ApiResponse<Unit>>
-                ) {
-                    if (response.isSuccessful) {
-                        selectedDate = schedule.startDate // <-- 이거 매우 중요
-                        fetchSchedulesForDate(selectedDate)
-                    } else {
-                        Log.e("MainActivity", "삭제 실패: ${response.errorBody()?.string()}")
-                    }
-                }
-
-                override fun onFailure(call: Call<ApiResponse<Unit>>, t: Throwable) {
-                    Log.e("MainActivity", "서버 오류", t)
-                }
-            })
-    }
-
-    fun openAddScheduleActivity(schedule: Schedule, isCopy: Boolean) {
-        val intent = Intent(this, AddScheduleActivity::class.java).apply {
-            putExtra("schedule", schedule)
-            putExtra("isCopy", isCopy)
-        }
-        startActivity(intent)
     }
 }
