@@ -1,105 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/white">
+    android:layout_height="match_parent">
 
-    <!-- 상단 툴바 -->
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
+    <!-- 본문 영역 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="#FFFFFF"
-        android:theme="@style/ThemeOverlay.Material3.Toolbar.Surface"
-        app:layout_constraintTop_toTopOf="parent"
-        app:titleTextColor="@android:color/black"
-        app:popupTheme="@style/ThemeOverlay.Material3.Light"
-        app:navigationIcon="@drawable/ic_menu"
-        app:navigationIconTint="@android:color/black" />
+        android:layout_height="match_parent"
+        android:background="#FFFFFF">
 
-    <!-- 연도 텍스트 -->
-    <TextView
-        android:id="@+id/textYear"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="2025년"
-        android:textStyle="bold"
-        android:textColor="#FF0000"
-        android:textSize="28sp"
-        android:gravity="center"
-        android:padding="12dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        <!-- 상단 툴바 -->
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="#FFFFFF"
+            android:theme="@style/ThemeOverlay.Material3.Toolbar.Surface"
+            app:layout_constraintTop_toTopOf="parent"
+            app:titleTextColor="#000000"
+            app:popupTheme="@style/ThemeOverlay.Material3.Light"
+            app:navigationIcon="@drawable/ic_menu"
+            app:navigationIconTint="#000000" />
 
-    <!-- 검색 아이콘 -->
-    <ImageView
-        android:id="@+id/searchButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:contentDescription="@string/search_icon_description"
-        android:minWidth="48dp"
-        android:minHeight="48dp"
-        android:padding="8dp"
-        android:src="@drawable/ic_search"
-        app:layout_constraintTop_toTopOf="@id/textYear"
-        app:layout_constraintBottom_toBottomOf="@id/textYear"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- 연간 달력 영역 -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/calendarScrollView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        app:layout_constraintTop_toBottomOf="@id/textYear"
-        app:layout_constraintBottom_toTopOf="@id/bottomInputArea"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <GridLayout
-            android:id="@+id/yearContainer"
+        <!-- 연도 텍스트 -->
+        <TextView
+            android:id="@+id/textYear"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="3"
-            android:padding="8dp" />
-    </androidx.core.widget.NestedScrollView>
-
-    <!-- 하단 입력창 -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bottomInputArea"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <EditText
-            android:id="@+id/inputEvent"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:hint="7월 10일 일정 추가"
-            android:background="@drawable/edit_text_background"
+            android:text="2025년"
+            android:textStyle="bold"
+            android:textColor="#FF0000"
+            android:textSize="28sp"
+            android:gravity="center"
             android:padding="12dp"
-            android:minHeight="48dp"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- 검색 아이콘 -->
+        <ImageView
+            android:id="@+id/searchButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:contentDescription="@string/search_icon_description"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_search"
+            app:layout_constraintTop_toTopOf="@id/textYear"
+            app:layout_constraintBottom_toBottomOf="@id/textYear"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 연간 달력 영역 -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/calendarScrollView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:fillViewport="true"
+            app:layout_constraintTop_toBottomOf="@id/textYear"
+            app:layout_constraintBottom_toTopOf="@id/bottomInputArea"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <GridLayout
+                android:id="@+id/yearContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:padding="8dp" />
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- 하단 입력창 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/bottomInputArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnAddEvent"/>
+            app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageButton
-            android:id="@+id/btnAddEvent"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_add"
-            android:contentDescription="@string/add_schedule_button"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            <EditText
+                android:id="@+id/inputEvent"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="7월 10일 일정 추가"
+                android:background="@drawable/edit_text_background"
+                android:padding="12dp"
+                android:minHeight="48dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btnAddEvent"/>
+
+            <ImageButton
+                android:id="@+id/btnAddEvent"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_add"
+                android:contentDescription="@string/add_schedule_button"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- 사이드 메뉴 -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:menu="@menu/drawer_menu" />
+</androidx.drawerlayout.widget.DrawerLayout>

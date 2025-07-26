@@ -130,6 +130,10 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_mypage -> {
+                    startActivity(Intent(this, MypageActivity::class.java))
+                    true
+                }
+                R.id.nav_settings -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                             != PackageManager.PERMISSION_GRANTED) {

@@ -121,13 +121,17 @@ class YearActivity : AppCompatActivity() {
             velocityY: Float
         ): Boolean {
             if (e1 == null) return false
-            val diffY = e2.y - e1.y
 
-            if (kotlin.math.abs(diffY) > SWIPE_THRESHOLD && kotlin.math.abs(velocityY) > SWIPE_VELOCITY_THRESHOLD) {
-                if (diffY > 0) {
-                    displayedYear -= 1
-                } else {
+            // 스와이프 좌우로
+            val diffX = e2.x - e1.x
+
+            if (kotlin.math.abs(diffX) > SWIPE_THRESHOLD && kotlin.math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                if (diffX > 0) {
+                    // 오른쪽으로 스와이프 -> 다음 연도
                     displayedYear += 1
+                } else {
+                    // 왼쪽으로 스와이프 -> 이전 연도
+                    displayedYear -= 1
                 }
                 updateYearCalendar(displayedYear)
                 return true
