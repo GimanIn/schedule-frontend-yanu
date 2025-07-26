@@ -7,6 +7,7 @@ import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.example.mycalendar.databinding.ActivityYearBinding
+import com.example.mycalendar.model.Schedule
 import java.time.LocalDate
 import java.time.YearMonth
 import android.graphics.Typeface
