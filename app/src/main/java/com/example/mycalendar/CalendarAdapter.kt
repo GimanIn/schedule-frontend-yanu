@@ -14,7 +14,7 @@ import java.time.LocalDate
 import java.time.DayOfWeek
 
 class CalendarAdapter(
-    var dayList: ArrayList<LocalDate>, // 날짜 리스트
+    var dayList: List<LocalDate?>, // 날짜 리스트 (nullable 허용)
     private val schedules: Map<LocalDate, List<Schedule>>, // 날짜별 일정 map
     private val onItemClicked: (LocalDate) -> Unit // 날짜 클릭 이벤트
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
@@ -125,6 +125,11 @@ class CalendarAdapter(
         // Do nothing or consider resetting per date instead
     }
 
+    fun setBaseDate(date: LocalDate) {
+        this.selectedDate = date
+    }
+
+    // 일정 바 View를 생성하고 추가하는 헬퍼 함수
     private fun addScheduleBar(holder: DayViewHolder, schedule: Schedule, date: LocalDate) {
         val startDate = schedule.startDate // Schedule.kt 기준
         val endDate = schedule.endDate   // endDate가 따로 없으므로 startDate만 사용

@@ -8,8 +8,9 @@ import android.text.TextWatcher
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import android.graphics.Color
+import android.content.res.ColorStateList
+import com.google.android.material.button.MaterialButton
 import com.example.mycalendar.model.*
-import com.example.mycalendar.network.ApiService
 import com.example.mycalendar.network.RetrofitClient
 import retrofit2.Call
 import retrofit2.Callback
@@ -20,7 +21,7 @@ class SignupActivity : AppCompatActivity() {
     private var isVerified = false
     private var sendCount = 1
     private var timer: CountDownTimer? = null
-    private val apiService = RetrofitClient.apiService // 수정
+    private val apiService = RetrofitClient.apiService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +33,7 @@ class SignupActivity : AppCompatActivity() {
 
         val btnSendCode = findViewById<Button>(R.id.btn_send_code)
         val btnCheckCode = findViewById<Button>(R.id.btn_check_code)
-        val btnNext = findViewById<Button>(R.id.btn_next)
+        val btnNext = findViewById<MaterialButton>(R.id.btn_next)
 
         val messagePhone = findViewById<LinearLayout>(R.id.message_phone)
         val iconPhone = findViewById<ImageView>(R.id.icon_phone)
@@ -49,8 +50,8 @@ class SignupActivity : AppCompatActivity() {
         val cbTerms = findViewById<CheckBox>(R.id.cb_terms)
         val cbPrivacy = findViewById<CheckBox>(R.id.cb_privacy)
 
-        val backButoon = findViewById<ImageButton>(R.id.btn_back)
-        backButoon.setOnClickListener { finish() }
+        val backButton = findViewById<ImageButton>(R.id.btn_back)
+        backButton.setOnClickListener { finish() }
 
         val inputWatcher = object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
@@ -59,9 +60,13 @@ class SignupActivity : AppCompatActivity() {
                 val isNameValid = name.matches("^[가-힣a-zA-Z]{2,20}$".toRegex())
                 val isPhoneValid = phone.length == 11
 
+                // 휴대폰 번호 버튼 활성화
                 btnSendCode.isEnabled = isNameValid && isPhoneValid
-                btnSendCode.setBackgroundResource(
-                    if (btnSendCode.isEnabled) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
+                btnSendCode.setTextColor(if (btnSendCode.isEnabled) Color.WHITE else Color.parseColor("#BDBDBD"))
+                btnSendCode.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                        if (btnSendCode.isEnabled) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+                    )
                 )
             }
 
@@ -76,8 +81,11 @@ class SignupActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {
                 val valid = s?.length == 6
                 btnCheckCode.isEnabled = valid
-                btnCheckCode.setBackgroundResource(
-                    if (valid) R.drawable.btn_login else R.drawable.ic_roundedbox_dark
+                btnCheckCode.setTextColor(if (valid) Color.WHITE else Color.parseColor("#BDBDBD"))
+                btnCheckCode.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                        if (valid) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+                    )
                 )
             }
 
@@ -85,6 +93,7 @@ class SignupActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+        // 인증번호 발송
         btnSendCode.setOnClickListener {
             val phone = etPhone.text.toString().trim()
             if (sendCount > 5) {
@@ -111,6 +120,7 @@ class SignupActivity : AppCompatActivity() {
             })
         }
 
+        // 인증번호 확인
         btnCheckCode.setOnClickListener {
             val phone = etPhone.text.toString().trim()
             val code = etAuthCode.text.toString().trim()
@@ -133,7 +143,7 @@ class SignupActivity : AppCompatActivity() {
             })
         }
 
-        // ✅ NEW: 인증 완료 시 다음 단계로 이동 (서버 요청 X, 다음 화면으로만 이동)
+        // 다음 버튼 클릭
         btnNext.setOnClickListener {
             val name = etName.text.toString().trim()
             val phone = etPhone.text.toString().trim()
@@ -172,6 +182,18 @@ class SignupActivity : AppCompatActivity() {
         }
     }
 
+    // 다음 버튼 활성화
+    private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: MaterialButton) {
+        val enabled = isVerified && cbTerms.isChecked && cbPrivacy.isChecked
+        btnNext.isEnabled = enabled
+        btnNext.setTextColor(if (enabled) Color.WHITE else Color.parseColor("#BDBDBD"))
+        btnNext.setBackgroundTintList(
+            ColorStateList.valueOf(
+                if (enabled) Color.parseColor("#1C2444") else Color.parseColor("#999CAA")
+            )
+        )
+    }
+
     private fun startTimer(
         textTimer: TextView,
         layout: LinearLayout,
@@ -208,12 +230,6 @@ class SignupActivity : AppCompatActivity() {
         icon.setImageResource(R.drawable.ic_warning)
         text.text = message
         text.setTextColor(Color.RED)
-    }
-
-    private fun updateNextButton(cbTerms: CheckBox, cbPrivacy: CheckBox, btnNext: Button) {
-        val enabled = isVerified && cbTerms.isChecked && cbPrivacy.isChecked
-        btnNext.isEnabled = enabled
-        btnNext.setBackgroundResource(if (enabled) R.drawable.btn_login else R.drawable.ic_roundedbox_dark)
     }
 
     override fun onDestroy() {
