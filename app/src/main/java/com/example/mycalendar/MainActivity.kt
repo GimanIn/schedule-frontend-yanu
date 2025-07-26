@@ -27,6 +27,8 @@ import com.example.mycalendar.model.*
 import com.example.mycalendar.network.RetrofitClient
 import com.example.mycalendar.network.ApiService
 import com.google.android.material.navigation.NavigationView
+
+
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -116,30 +118,69 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_day -> {
-                    openDayView()
+                    val selectedDate = LocalDate.now() // 또는 선택된 날짜
+
+                    val schedulesForDay = getSchedulesForDate(selectedDate) // 해당 날짜의 일정 리스트
+
+                    val dialog = ScheduleListDialog(
+                        date = selectedDate,
+                        dailySchedules = schedulesForDay.toMutableList(), // MutableList<Schedule>
+                        onDataChanged = {
+                            // 일정 수정되었을 때 처리
+                        },
+                        onAddNewSchedule = { date ->
+                            // 일정 추가 화면 이동 등
+                            val intent = Intent(this, AddScheduleActivity::class.java)
+                            intent.putExtra("selectedDate", date.toString())
+                            startActivity(intent)
+                        }
+                    )
+                    dialog.show(supportFragmentManager, "ScheduleListDialog")
+
                     true
                 }
                 R.id.nav_mypage -> {
-                    startActivity(Intent(this, MypageActivity::class.java))
-                    true
-                }
-                R.id.nav_settings -> {
-                    handleNotificationSettings()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                            //권한이 없을 경우 → 다이얼로그로 유도
+                            showNotificationDialog()
+                        } else {
+                            // 이미 권한 있음 → 설정 화면으로 이동
+                            goToAppNotificationSettings()
+                        }
+                    } else {
+                        goToAppNotificationSettings()
+                    }
                     true
                 }
                 else -> false
             }.also { drawerLayout.closeDrawer(GravityCompat.START) }
         }
 
-        searchButton.setOnClickListener { openSearchActivity() }
+        searchButton.setOnClickListener {
+            openSearchActivity()
+        }
         addButton.setOnClickListener { handleAddButtonClick() }
 
         // AI 요약 버튼
         findViewById<ImageButton>(R.id.aiButton)?.setOnClickListener {
+            // AlertDialog를 사용해 커스텀 뷰를 띄웁니다.
             val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
             val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
             val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
-            // TODO: AI 요약 호출 로직
+
+            // 현재 날짜를 표시
+            val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
+            summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
+
+            // TODO: 여기에 나중에 백엔드로부터 AI 요약 내용을 받아와
+            // summaryContentText.text에 설정하는 코드가 들어갑니다.
+
+            AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setPositiveButton("닫기", null)
+                .show()
         }
 
         gestureDetector = GestureDetector(this, SwipeGestureListener())
@@ -272,9 +313,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupCalendar() {
-        calendarAdapter = CalendarAdapter(generateDaysInMonth(YearMonth.from(selectedDate)), schedules) { date ->
+        val yearMonth = YearMonth.from(selectedDate)
+        val daysInMonth = generateDaysInMonth(yearMonth)
+
+        calendarAdapter = CalendarAdapter(
+            dayList = daysInMonth,
+            schedules = schedules
+        ) { date ->
             if (selectedDate == date) {
-                openAddOrListDialog(date)
+                val dailySchedules = schedules[date]
+                if (dailySchedules.isNullOrEmpty()) {
+                    openAddScheduleActivity(date)
+                } else {
+                    val dialog = ScheduleListDialog(
+                        date,
+                        dailySchedules.toMutableList(),
+                        onDataChanged = { updateCalendar() },
+                        onAddNewSchedule = { clickedDate ->
+                            openAddScheduleActivity(clickedDate)
+                        }
+                    )
+                    dialog.show(supportFragmentManager, "ScheduleListDialog")
+                }
             } else {
                 selectedDate = date
                 updateCalendar()
@@ -283,8 +343,28 @@ class MainActivity : AppCompatActivity() {
 
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
         calendarRecyclerView.adapter = calendarAdapter
-        updateCalendar()
+
+
+        // 1. 우리가 만든 제스처 리스너를 사용하여 제스처 감지기를 생성합니다.
+        var gestureDetector: GestureDetector
+        gestureDetector = GestureDetector(this, SwipeGestureListener())
+
+        // 2. 캘린더(RecyclerView)의 터치 이벤트를 제스처 감지기가 처리하도록 설정합니다.
+        // 이 방법은 클릭과 스와이프를 모두 온전히 지원합니다.
+        calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                gestureDetector.onTouchEvent(e)
+                return false
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
+        // --- 여기까지 추가 ---
+        updateCalendar() // 앱 실행 시 첫 화면 로드
     }
+
+
 
     private fun updateCalendar() {
         toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
@@ -293,6 +373,18 @@ class MainActivity : AppCompatActivity() {
         calendarAdapter.notifyDataSetChanged()
         updateScheduleHint(selectedDate)
     }
+    override fun onNewIntent(intent: Intent) {
+            super.onNewIntent(intent)
+            handleIntent(intent)
+            updateCalendar()
+    }
+
+    private fun handleIntent(intent: Intent) {
+            val y = intent.getIntExtra("targetYear", LocalDate.now().year)
+            val m = intent.getIntExtra("targetMonth", LocalDate.now().monthValue)
+            selectedDate = LocalDate.of(y, m, 1)
+    }
+
 
     private fun openAddScheduleActivity(date: LocalDate) {
         val intent = Intent(this, AddScheduleActivity::class.java)
@@ -372,6 +464,7 @@ class MainActivity : AppCompatActivity() {
 
         return dayList
     }
+
 
     private fun updateScheduleHint(date: LocalDate) {
         scheduleEditText.hint = date.format(DateTimeFormatter.ofPattern("M월 d일 일정 추가", Locale.KOREA))
@@ -458,16 +551,30 @@ class MainActivity : AppCompatActivity() {
         private val SWIPE_THRESHOLD = 100
         private val SWIPE_VELOCITY_THRESHOLD = 100
 
-        override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            // e1이 null이면 시작점을 알 수 없으므로 무시
             if (e1 == null) return false
+
             val diffX = e2.x - e1.x
+            // 스와이프 방향과 속도를 감지
             if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                selectedDate = if (diffX > 0) selectedDate.minusMonths(1) else selectedDate.plusMonths(1)
-                fetchAllSchedulesForMonth()
-                updateCalendar()
-                return true
+                if (diffX > 0) {
+                    // 오른쪽으로 스와이프 -> 이전 달
+                    selectedDate = selectedDate.minusMonths(1)
+                    updateCalendar()
+                } else {
+                    // 왼쪽으로 스와이프 -> 다음 달
+                    selectedDate = selectedDate.plusMonths(1)
+                    updateCalendar()
+                }
+                return true // 이벤트 처리를 완료했음을 알림
             }
-            return false
+            return super.onFling(e1, e2, velocityX, velocityY)
         }
     }
 }

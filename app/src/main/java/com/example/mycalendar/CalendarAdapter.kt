@@ -120,7 +120,7 @@ class CalendarAdapter(
         }
 
         if (renderedCount > 0) {
-            Log.d("CalendarAdapter", "🎨 $currentDate에 총 ${renderedCount}개 일정 바 렌더링 완료")
+            Log.d("CalendarAdapter", "🎨 $currentDate 에 총 ${renderedCount}개 일정 바 렌더링 완료")
         }
 
         holder.itemView.setOnClickListener { onItemClicked(currentDate) }

@@ -7,6 +7,10 @@ import android.os.Bundle
 import android.view.*
 import android.widget.*
 import androidx.fragment.app.DialogFragment
+import android.graphics.drawable.ColorDrawable
+import java.time.LocalTime
+
+
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
@@ -41,6 +45,7 @@ class ScheduleListDialog(
     private lateinit var scheduleBlocksContainer: FrameLayout
     private lateinit var editScheduleButton: ImageButton
     private lateinit var currentColorView: View
+
     private lateinit var detailAlarmSwitch: SwitchMaterial
     private val hourHeightDp = 60
 
@@ -91,8 +96,11 @@ class ScheduleListDialog(
                 Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
         )
+
         scheduleListRecyclerView.layoutManager = LinearLayoutManager(context)
         scheduleListRecyclerView.adapter = scheduleListAdapter
+        scheduleListAdapter.notifyDataSetChanged()
+
 
         addButtonDialog.setOnClickListener {
             val title = scheduleEditTextDialog.text.toString().trim()
@@ -107,8 +115,8 @@ class ScheduleListDialog(
                         scheduledDate = date.toString(),
                         startDate = date.toString(),
                         endDate = date.toString(),
-                        startTime = null,
-                        endTime = null,
+                        startTime = LocalTime.of(9, 0).toString(),
+                        endTime = LocalTime.of(9, 0).toString(),
                         allDay = false,
                         isConfirmed = false,
                         color = "#4285F4",
@@ -158,6 +166,9 @@ class ScheduleListDialog(
                 onAddNewSchedule(date)
                 dismiss()
             }
+            listViewContainer.visibility = View.VISIBLE
+            detailViewContainer.visibility = View.GONE
+
         }
     }
 
@@ -172,6 +183,8 @@ class ScheduleListDialog(
 
     // ✅ 이것도 밖으로 빼야 오류 안 남
     private fun showDetailView(schedule: Schedule) {
+        listViewContainer.visibility = View.GONE
+        detailViewContainer.visibility = View.VISIBLE
         val categoryText = schedule.category?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
         val locationText = schedule.location?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
         val memoText = schedule.memo?.takeIf { it.isNotBlank() } ?: EMPTY_STRING
@@ -184,6 +197,16 @@ class ScheduleListDialog(
             if (memoText.isNotEmpty()) "메모: $memoText" else null
         ).filterNotNull().joinToString("\n")
     }
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.let { window ->
+            val displayMetrics = resources.displayMetrics
+            val height = (displayMetrics.heightPixels * 0.7).toInt()
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+    }
+
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)

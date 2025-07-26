@@ -57,7 +57,7 @@ class SearchListAdapter(
             holder.timeText.visibility = View.VISIBLE
         } else {
             // 기존: startTime이 없으면 시간 텍스트 숨김
-            holder.timeText.visibility = View.GONE
+            holder.timeText.visibility = View.VISIBLE
         }
     }
 
