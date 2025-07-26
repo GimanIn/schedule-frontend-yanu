@@ -2,24 +2,26 @@ package com.example.mycalendar
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
 import java.time.LocalDate
 import java.time.DayOfWeek
 
 class CalendarAdapter(
-    var dayList: ArrayList<LocalDate>, // 날짜 리스트
-    private val schedules: Map<LocalDate, List<Schedule>>, // 날짜별 일정 map
+    var dayList: List<LocalDate?>, // 날짜 리스트 (nullable 허용)
+    var schedules: MutableMap<LocalDate, MutableList<Schedule>>, // ✅ var로 변경 + public
     private val onItemClicked: (LocalDate) -> Unit // 날짜 클릭 이벤트
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
 
-    private val MAX_SCHEDULES_PER_DAY = 4 // 한 칸에 최대 4개
+    private val maxSchedulesPerDay = 4 // ✅ 카멜케이스로 변경
 
     var selectedDate: LocalDate = LocalDate.now()
 
@@ -37,14 +39,14 @@ class CalendarAdapter(
     }
 
     override fun onBindViewHolder(holder: DayViewHolder, position: Int) {
-        val date = dayList.getOrNull(position)
+        val currentDate = dayList.getOrNull(position) // ✅ date 대신 currentDate 사용
 
-        if (date == null || date == LocalDate.MIN) {
+        if (currentDate == null || currentDate == LocalDate.MIN) {
             holder.itemView.visibility = View.INVISIBLE
             return
         }
 
-        holder.dayText.text = date.dayOfMonth.toString()
+        holder.dayText.text = currentDate.dayOfMonth.toString()
         holder.itemView.visibility = View.VISIBLE
 
         // 선택 날짜와 오늘 표시
@@ -52,23 +54,31 @@ class CalendarAdapter(
         holder.dayText.background = null
         holder.itemView.background = null
 
-        if (date == selectedDate) {
+        if (currentDate == selectedDate) {
             holder.itemView.setBackgroundResource(R.drawable.selected_day_border)
         }
-        if (date == LocalDate.now()) {
+        if (currentDate == LocalDate.now()) {
             holder.dayText.setBackgroundResource(R.drawable.selected_day_background)
             holder.dayText.setTextColor(Color.WHITE)
         }
 
         holder.scheduleContainer.removeAllViews()
 
-        // startTime 기준 정렬 (nullable 처리 포함)
-        val dailySchedules = schedules[date]
+        // ✅ 해당 날짜의 일정 가져오기 (로깅 추가)
+        val dailySchedules = schedules[currentDate]
             ?.sortedWith(
-                compareBy<Schedule> { it.startTime ?: java.time.LocalTime.MIN }
+                compareBy { it.startTime ?: java.time.LocalTime.MIN } // ✅ 제네릭 타입 제거
             ) ?: emptyList()
 
-        val scheduleSlots = arrayOfNulls<Schedule>(MAX_SCHEDULES_PER_DAY)
+        // ✅ 디버깅 로그
+        if (dailySchedules.isNotEmpty()) {
+            Log.d("CalendarAdapter", "🎯 $currentDate 일정 렌더링: ${dailySchedules.size}개")
+            dailySchedules.forEach { schedule ->
+                Log.d("CalendarAdapter", "  📋 ${schedule.title} (색상: ${schedule.color})")
+            }
+        }
+
+        val scheduleSlots = arrayOfNulls<Schedule>(maxSchedulesPerDay)
 
         // id 기준으로 슬롯 재배치 (이전 스케줄 유지)
         dailySchedules.forEach { schedule ->
@@ -97,16 +107,23 @@ class CalendarAdapter(
             }
         }
 
-        // 렌더링
+        // ✅ 렌더링 (로깅 추가)
+        var renderedCount = 0
         scheduleSlots.forEach { schedule ->
             if (schedule != null) {
-                addScheduleBar(holder, schedule, date)
+                addScheduleBar(holder, schedule, currentDate)
+                renderedCount++
+                Log.d("CalendarAdapter", "  ✅ 일정 바 렌더링: ${schedule.title}")
             } else {
                 addEmptyBar(holder)
             }
         }
 
-        holder.itemView.setOnClickListener { onItemClicked(date) }
+        if (renderedCount > 0) {
+            Log.d("CalendarAdapter", "🎨 $currentDate에 총 ${renderedCount}개 일정 바 렌더링 완료")
+        }
+
+        holder.itemView.setOnClickListener { onItemClicked(currentDate) }
     }
 
     private fun addEmptyBar(holder: DayViewHolder) {
@@ -122,19 +139,20 @@ class CalendarAdapter(
 
     override fun onViewRecycled(holder: DayViewHolder) {
         super.onViewRecycled(holder)
-        // Do nothing or consider resetting per date instead
+        // ViewHolder 재사용 시 정리할 내용 없음
     }
 
-    private fun addScheduleBar(holder: DayViewHolder, schedule: Schedule, date: LocalDate) {
-        val startDate = schedule.startDate // Schedule.kt 기준
-        val endDate = schedule.endDate   // endDate가 따로 없으므로 startDate만 사용
+    // 일정 바 View를 생성하고 추가하는 헬퍼 함수
+    private fun addScheduleBar(holder: DayViewHolder, schedule: Schedule, currentDate: LocalDate) {
+        val startDate = schedule.startDate
+        val endDate = schedule.endDate
 
         // 범위 비교 (단일 날짜 기반 처리)
-        val prevDayInSchedule = date.minusDays(1) >= startDate
-        val nextDayInSchedule = date.plusDays(1) <= endDate
+        val prevDayInSchedule = currentDate.minusDays(1) >= startDate
+        val nextDayInSchedule = currentDate.plusDays(1) <= endDate
 
-        val isFirstDayOfRow = date.dayOfWeek == DayOfWeek.SUNDAY
-        val isLastDayOfRow = date.dayOfWeek == DayOfWeek.SATURDAY
+        val isFirstDayOfRow = currentDate.dayOfWeek == DayOfWeek.SUNDAY
+        val isLastDayOfRow = currentDate.dayOfWeek == DayOfWeek.SATURDAY
 
         val startsOnThisCell = !prevDayInSchedule || isFirstDayOfRow
         val endsOnThisCell = !nextDayInSchedule || isLastDayOfRow
@@ -151,7 +169,11 @@ class CalendarAdapter(
             "${it.first()}) "
         } ?: ""
 
-        val titleText = if (date == startDate || (isFirstDayOfRow && !date.isBefore(startDate))) schedule.title else ""
+        val titleText = if (currentDate == startDate || (isFirstDayOfRow && !currentDate.isBefore(startDate))) {
+            schedule.title
+        } else {
+            ""
+        }
         val title = "$categoryPrefix$titleText"
 
         val scheduleView = TextView(holder.itemView.context).apply {
@@ -161,9 +183,16 @@ class CalendarAdapter(
             setTextColor(Color.WHITE)
             setPadding(8, 2, 8, 2)
 
+            // ✅ 안전한 색상 처리
             val background = ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
                 ?.mutate() as? GradientDrawable
-            val safeColor = schedule.color
+
+            val safeColor = try {
+                schedule.color // 이미 Int 타입이므로 그대로 사용
+            } catch (e: Exception) {
+                Log.w("CalendarAdapter", "색상 파싱 실패: ${schedule.color}, 기본색 사용")
+                "#4285F4".toColorInt() // ✅ KTX 확장함수 사용
+            }
             background?.setColor(safeColor)
 
             this.background = background
@@ -186,4 +215,24 @@ class CalendarAdapter(
     }
 
     override fun getItemCount(): Int = dayList.size
+
+    // ✅ 외부에서 사용할 수 있는 간단한 새로고침 함수
+    fun refreshData() {
+        Log.d("CalendarAdapter", "🔄 CalendarAdapter 데이터 새로고침")
+        notifyDataSetChanged()
+    }
+
+    // ✅ 일정 데이터 상태 확인 함수 (디버깅용)
+    fun logCurrentState() {
+        Log.d("CalendarAdapter", "📊 === CalendarAdapter 현재 상태 ===")
+        Log.d("CalendarAdapter", "📊 총 날짜 수: ${schedules.size}")
+        schedules.forEach { (date, scheduleList) ->
+            if (scheduleList.isNotEmpty()) {
+                Log.d("CalendarAdapter", "📊 $date: ${scheduleList.size}개")
+                scheduleList.forEach { schedule ->
+                    Log.d("CalendarAdapter", "   - ${schedule.title}")
+                }
+            }
+        }
+    }
 }

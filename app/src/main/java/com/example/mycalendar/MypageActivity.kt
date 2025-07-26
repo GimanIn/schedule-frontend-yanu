@@ -7,6 +7,11 @@ import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import android.os.Handler
+import android.os.Looper
+import android.view.View
+import com.google.android.material.snackbar.Snackbar
+import androidx.appcompat.app.AlertDialog
 
 class
 MypageActivity : AppCompatActivity() {
@@ -32,6 +37,15 @@ MypageActivity : AppCompatActivity() {
         btnLogout = findViewById(R.id.btnLogout)
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount)
 
+        // 상단 아이콘 클릭 시 MainActivity로 이동
+        val userIcon = findViewById<ImageView>(R.id.userIcon)
+
+        userIcon.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            startActivity(intent)
+        }
+
         // 저장된 이름, 아이디 불러오기
         nameText.text = sharedPref.getString("name", "이름 없음")
         idText.text = sharedPref.getString("id", "ID 없음")
@@ -44,16 +58,47 @@ MypageActivity : AppCompatActivity() {
 
         // 로그아웃
         btnLogout.setOnClickListener {
-            sharedPref.edit().putBoolean("autoLogin", false).apply()
-            val intent = Intent(this, LoginActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(intent)
-            finish()
+            // 자동로그인 해제
+            sharedPref.edit().putBoolean("autoLogin", false).commit()
+
+            // 로그아웃 안내 문구
+            val rootView = findViewById<View>(android.R.id.content)
+            Snackbar.make(rootView, "로그아웃 되었습니다.", Snackbar.LENGTH_SHORT).show()
+
+            // 1~1.5초 후에 LoginActivity로 이동
+            Handler(Looper.getMainLooper()).postDelayed({
+                val intent = Intent(this, LoginActivity::class.java)
+                intent.putExtra("fromLogout", true)
+                startActivity(intent)
+                finish()
+            }, 1200)  // 1.2초 정도 지연
         }
 
         // 계정 삭제 (실제로는 서버 연동 필요)
         btnDeleteAccount.setOnClickListener {
-            Toast.makeText(this, "계정 삭제 요청이 접수되었습니다.", Toast.LENGTH_SHORT).show()
+            AlertDialog.Builder(this)
+                .setTitle("계정을 삭제하시겠습니까?")
+                .setMessage("계정 삭제 시 계정 정보 및 일정에 관한 내용은 복구되지 않습니다.")
+                .setNegativeButton("취소") { dialog, _ ->
+                    dialog.dismiss()  // 아무것도 하지 않고 창 닫기
+                }
+                .setPositiveButton("계정 삭제") { _, _ ->
+                    // 모든 사용자 정보 삭제
+                    sharedPref.edit().clear().commit()
+
+                    // 안내 메시지 표시
+                    val rootView = findViewById<View>(android.R.id.content)
+                    Snackbar.make(rootView, "계정이 삭제되었습니다.", Snackbar.LENGTH_SHORT).show()
+
+                    // 약간의 지연 후 로그인 화면으로 이동
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        val intent = Intent(this, LoginActivity::class.java)
+                        intent.putExtra("fromLogout", true)
+                        startActivity(intent)
+                        finish()
+                    }, 1200)
+                }
+                .show()
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
@@ -27,6 +28,12 @@ class ChangePasswordActivity : AppCompatActivity() {
         etNewPw = findViewById(R.id.etNewPw)
         etConfirmPw = findViewById(R.id.etConfirmPw)
         btnSubmit = findViewById(R.id.btnChangePw)
+
+        // 뒤로 가기 버튼 클릭
+        val backButoon = findViewById<ImageButton>(R.id.btn_back)
+        backButoon.setOnClickListener {
+            finish() // 현재 액티비티 종료 -> 이전 화면으로 돌아감
+        }
 
         btnSubmit.setOnClickListener {
             val current = etCurrentPw.text.toString()
