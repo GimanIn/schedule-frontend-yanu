@@ -1,26 +1,14 @@
 package com.example.mycalendar
 
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
-import android.widget.Toast
+import android.content.*
 import android.net.Uri
-import androidx.recyclerview.widget.RecyclerView
-import java.time.format.DateTimeFormatter
-import androidx.appcompat.app.AppCompatActivity
+import android.view.*
+import android.widget.*
 import androidx.fragment.app.FragmentManager
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.widget.LinearLayout
-import android.widget.PopupWindow
-import androidx.appcompat.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.widget.Button
-import java.util.Locale
+import androidx.recyclerview.widget.RecyclerView
+import com.example.mycalendar.model.Schedule
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 class ScheduleListAdapter(
     private val scheduleList: List<Schedule>,
@@ -30,6 +18,14 @@ class ScheduleListAdapter(
     private val onCopyClicked: (Schedule) -> Unit,
     private val onDeleteClicked: (Schedule, Int) -> Unit
 ) : RecyclerView.Adapter<ScheduleListAdapter.ScheduleViewHolder>() {
+
+    companion object {
+        private const val SCHEME = "mycalendar"                      // ✅ 딥링크 스킴
+        private const val HOST = "schedule"                          // ✅ 딥링크 호스트
+        private const val TIME_FORMAT = "HH:mm"                      // ✅ 시간 포맷
+        private const val SHARE_TIME_FORMAT = "M월 d일 a hh:mm"      // ✅ 공유용 시간 포맷
+        private const val DEFAULT_SHARE_TITLE = "[일정 공유]"        // ✅ 공유 텍스트 제목
+    }
 
     inner class ScheduleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val colorBar: View = itemView.findViewById(R.id.colorBarView)
@@ -41,19 +37,17 @@ class ScheduleListAdapter(
             titleText.text = schedule.title
             colorBar.setBackgroundColor(schedule.color)
 
-            val formatter = DateTimeFormatter.ofPattern("HH:mm")
+            val timeFormatter = DateTimeFormatter.ofPattern(TIME_FORMAT)
+            val startDateTime = schedule.startTime?.let { schedule.startDate.atTime(it) }
+            val endDateTime = schedule.endTime?.let { schedule.startDate.atTime(it) }
 
-            // schedule.startTime과 schedule.endTime을 모두 새 변수 이름으로 변경합니다.
-            // 변경될 수 있는 var 변수를 변경 불가능한 val 지역 변수에 담아서 사용합니다.
-            val startDateTime = schedule.startDateTime
-            val endDateTime = schedule.endDateTime
-
+            // 시간 표시
             if (startDateTime != null) {
-                timeText.text = startDateTime.format(formatter)
+                timeText.text = startDateTime.format(timeFormatter)
                 timeText.visibility = View.VISIBLE
 
                 if (endDateTime != null) {
-                    timeRangeText.text = "${startDateTime.format(formatter)} - ${endDateTime.format(formatter)}"
+                    timeRangeText.text = "${startDateTime.format(timeFormatter)} - ${endDateTime.format(timeFormatter)}"
                     timeRangeText.visibility = View.VISIBLE
                 } else {
                     timeRangeText.visibility = View.GONE
@@ -65,60 +59,41 @@ class ScheduleListAdapter(
 
             itemView.setOnClickListener { onScheduleClicked(schedule) }
 
-            // 길게 누르기(Long Press) 리스너
             itemView.setOnLongClickListener { view ->
                 val inflater = LayoutInflater.from(view.context)
                 val popupView = inflater.inflate(R.layout.dialog_custom_menu, null)
 
-                // 1. PopupWindow를 생성합니다.
-                val popupWindow = PopupWindow(
-                    popupView,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    true // 바깥 영역 터치 시 닫히도록 설정
-                )
+                val popupWindow = PopupWindow(popupView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
+                    elevation = 20f
+                }
 
-                // 2. 팝업의 스타일을 설정합니다. (elevation을 주어 입체감 있게)
-                popupWindow.elevation = 20f
-
-                // 3. 팝업 안의 각 버튼에 대한 클릭 리스너를 설정합니다.
-                val menuEdit = popupView.findViewById<TextView>(R.id.menu_edit)
-                val menuCopy = popupView.findViewById<TextView>(R.id.menu_copy)
-                val menuShare = popupView.findViewById<TextView>(R.id.menu_share)
-                val menuDelete = popupView.findViewById<TextView>(R.id.menu_delete)
-
-                menuEdit.setOnClickListener {
+                popupView.findViewById<TextView>(R.id.menu_edit).setOnClickListener {
                     onEditClicked(schedule)
                     popupWindow.dismiss()
                 }
-                menuCopy.setOnClickListener {
+
+                popupView.findViewById<TextView>(R.id.menu_copy).setOnClickListener {
                     onCopyClicked(schedule)
                     popupWindow.dismiss()
                 }
-                menuShare.setOnClickListener {
-                    popupWindow.dismiss() // 먼저 컨텍스트 메뉴를 닫습니다.
 
-                    // 1. '텍스트/링크' 선택 팝업의 뷰를 생성합니다.
+                popupView.findViewById<TextView>(R.id.menu_share).setOnClickListener {
+                    popupWindow.dismiss()
+
                     val sharePopupView = inflater.inflate(R.layout.dialog_share_options, null)
-                    val shareAsTextButton = sharePopupView.findViewById<TextView>(R.id.shareAsTextButton)
-                    val shareAsLinkButton = sharePopupView.findViewById<TextView>(R.id.shareAsLinkButton)
+                    val sharePopupWindow = PopupWindow(sharePopupView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
+                        elevation = 20f
+                    }
 
-                    // 2. 새로운 PopupWindow를 만듭니다.
-                    val sharePopupWindow = PopupWindow(
-                        sharePopupView,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        true
-                    )
-                    sharePopupWindow.elevation = 20f
+                    val shareFormatter = DateTimeFormatter.ofPattern(SHARE_TIME_FORMAT, Locale.KOREA)
+                    val startForShare = schedule.startTime?.let { schedule.startDate.atTime(it) }
+                    val endForShare = schedule.endTime?.let { schedule.startDate.atTime(it) }
 
-                    // 3. "텍스트 공유" 버튼을 눌렀을 때의 동작
-                    shareAsTextButton.setOnClickListener {
-                        val formatter = DateTimeFormatter.ofPattern("M월 d일 a hh:mm", Locale.KOREA)
+                    sharePopupView.findViewById<TextView>(R.id.shareAsTextButton).setOnClickListener {
                         val scheduleText = """
-                            [일정 공유]
+                            $DEFAULT_SHARE_TITLE
                             📌 제목: ${schedule.title}
-                            🗓️ 날짜 & 시간: ${startDateTime?.format(formatter)} ~ ${endDateTime?.format(formatter)}
+                            🗓️ 날짜 & 시간: ${startForShare?.format(shareFormatter)} ~ ${endForShare?.format(shareFormatter)}
                             📍 분야: ( ${schedule.category} ) / 장소: ( ${schedule.location} )
                             📝 메모: ${schedule.memo}
                         """.trimIndent()
@@ -130,22 +105,21 @@ class ScheduleListAdapter(
                         sharePopupWindow.dismiss()
                     }
 
-                    // 4. "링크 보내기" 버튼을 눌렀을 때의 동작
-                    shareAsLinkButton.setOnClickListener {
-                        val startDateTime = schedule.startDateTime
-                        val endDateTime = schedule.endDateTime
-                        if(startDateTime == null || endDateTime == null){
+                    sharePopupView.findViewById<TextView>(R.id.shareAsLinkButton).setOnClickListener {
+                        if (startForShare == null || endForShare == null) {
                             Toast.makeText(view.context, "시간이 지정된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
                             sharePopupWindow.dismiss()
                             return@setOnClickListener
                         }
 
-                        val deepLinkUri = Uri.parse("https://mycalendar.example.com/schedule").buildUpon()
+                        val deepLinkUri = Uri.Builder()
+                            .scheme(SCHEME)
+                            .authority(HOST)
                             .appendQueryParameter("title", schedule.title)
-                            .appendQueryParameter("start", startDateTime.toString())
-                            .appendQueryParameter("end", endDateTime.toString())
+                            .appendQueryParameter("start", startForShare.toString())
+                            .appendQueryParameter("end", endForShare.toString())
                             .appendQueryParameter("color", schedule.color.toString())
-                            .appendQueryParameter("memo", schedule.memo)
+                            .appendQueryParameter("memo", schedule.memo ?: "")
                             .build()
 
                         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -156,19 +130,16 @@ class ScheduleListAdapter(
                         sharePopupWindow.dismiss()
                     }
 
-                    // 5. 원래 컨텍스트 메뉴가 있던 위치에 새로운 팝업을 띄웁니다.
                     sharePopupWindow.showAsDropDown(view)
                 }
 
-                menuDelete.setOnClickListener {
-                    val confirmationDialog = DeleteConfirmationDialog {
+                popupView.findViewById<TextView>(R.id.menu_delete).setOnClickListener {
+                    DeleteConfirmationDialog {
                         onDeleteClicked(schedule, position)
-                    }
-                    confirmationDialog.show(fragmentManager, "DeleteConfirmationDialog")
+                    }.show(fragmentManager, "DeleteConfirmationDialog")
                     popupWindow.dismiss()
                 }
 
-                // 4. 꾹 누른 view를 기준으로 팝업을 보여줍니다.
                 popupWindow.showAsDropDown(view)
                 true
             }

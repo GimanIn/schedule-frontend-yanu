@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/../../../중급과정/액션러닝/Schedule-management/app" />
           </set>
         </option>
+        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

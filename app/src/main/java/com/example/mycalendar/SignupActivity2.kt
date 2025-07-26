@@ -9,6 +9,12 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
 import android.content.res.ColorStateList
+import com.example.mycalendar.model.SignupRequest
+import com.example.mycalendar.model.SignupResponse
+import com.example.mycalendar.network.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class SignupActivity2 : AppCompatActivity() {
     // 아이디 입력
@@ -41,45 +47,39 @@ class SignupActivity2 : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_signup2) // XML 화면 연결
+        setContentView(R.layout.activity_signup2)
 
         initViews()
+
+        val name = intent.getStringExtra("name") ?: ""
+        val phone = intent.getStringExtra("phone") ?: ""
 
         // 아이디 입력 감지
         editTextId.doAfterTextChanged { text ->
             val id = text.toString()
-            // 정규식: 영문 대/소문자 또는 숫자, 6~10자
             val isValid = Regex("^[a-zA-Z0-9]{6,10}$").matches(id)
 
-            // 입력 길이가 6자 이상이면 버튼 활성화
             btnCheckId.isEnabled = id.length >= 6
-            val colorEnabled = Color.parseColor("#1C2444")   // 남색
-            val colorDisabled = Color.parseColor("#999CAA")  // 회색
-
             btnCheckId.setBackgroundTintList(
-                ColorStateList.valueOf(if (btnCheckId.isEnabled) colorEnabled else colorDisabled)
+                ColorStateList.valueOf(if (btnCheckId.isEnabled) Color.parseColor("#1C2444") else Color.parseColor("#999CAA"))
             )
 
-            // 아이디 입력이 바뀔 때마다 메시지 숨기기
             messageId.visibility = View.GONE
-            // 회원가입 버튼 상태 갱신
             updateFinishButtonState()
         }
+
+        // 아이디 중복 체크
         btnCheckId.setOnClickListener {
             val id = editTextId.text.toString()
-            // 임시 중복 리스트
             val duplicatedIds = listOf("aaa123", "user01", "test123")
             val isDuplicated = id in duplicatedIds
 
             messageId.visibility = View.VISIBLE
-
             if (isDuplicated) {
-                // 중복된 아이디
                 iconName.setImageResource(R.drawable.ic_warning)
                 textName.setTextColor(Color.RED)
                 textName.text = "이미 존재하는 아이디입니다."
             } else {
-                // 사용 가능한 아이디
                 iconName.setImageResource(R.drawable.ic_check)
                 textName.setTextColor(Color.parseColor("#2BA600"))
                 textName.text = "사용 가능한 아이디입니다."
@@ -90,7 +90,6 @@ class SignupActivity2 : AppCompatActivity() {
         // 비밀번호 입력 감지
         password.doAfterTextChanged {
             val pw = it.toString()
-            // 조건별 체크
             val hasLower = pw.any { it.isLowerCase() }
             val hasUpper = pw.any { it.isUpperCase() }
             val hasDigit = pw.any { it.isDigit() }
@@ -100,135 +99,124 @@ class SignupActivity2 : AppCompatActivity() {
             val isValid = pw.length in 8..16 && typesUsed >= 2
 
             if (isValid) {
-                // 조건 만족 → 경고 숨기기
                 messagePassword.visibility = View.GONE
             } else {
-                // 조건 불충분 → 경고 메시지 표시
                 messagePassword.visibility = View.VISIBLE
                 iconPassword.setImageResource(R.drawable.ic_warning)
                 textPassword.setTextColor(Color.RED)
                 textPassword.text = "올바른 양식이 아닙니다. 다시 입력해주세요."
             }
 
-            // 아래 단계에서 추가할 비밀번호 재확인 검사 함수
             checkPasswordMatch()
-            // 회원가입 버튼 상태 갱신
             updateFinishButtonState()
         }
+
         // 비밀번호 재입력 감지
         rePassword.doAfterTextChanged {
             checkPasswordMatch()
             updateFinishButtonState()
         }
-        // 비밀번호 초기상태
-        password.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        // 비밀번호 보기/숨기기 토글 기능 추가
+
+        // 비밀번호 토글
         togglePw.setOnClickListener {
             isPwVisible = !isPwVisible
-
-            // inputType 설정 변경
             password.inputType = if (isPwVisible)
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
             else
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-
-            // 커서 위치 유지
             password.setSelection(password.text.length)
-
-            // 눈 아이콘 바꾸기
-            togglePw.setImageResource(
-                if (isPwVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off
-            )
+            togglePw.setImageResource(if (isPwVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
         }
-        // 비밀번호 초기상태
-        rePassword.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        // 토글 클릭 시 보여주기/숨기
+
         toggleRePw.setOnClickListener {
             isRePwVisible = !isRePwVisible
-
             rePassword.inputType = if (isRePwVisible)
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
             else
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-
             rePassword.setSelection(rePassword.text.length)
-
-            toggleRePw.setImageResource(
-                if (isRePwVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off
-            )
+            toggleRePw.setImageResource(if (isRePwVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
         }
+
         // 회원가입 버튼
         btnFinish.setOnClickListener {
             if (btnFinish.isEnabled) {
-                val intent = Intent(this, SignupCompleteActivity::class.java)
-                startActivity(intent)
-                finish()
+                val userId = editTextId.text.toString()
+                val passwordValue = password.text.toString()
+                val signupRequest = SignupRequest(userId, name, phone, passwordValue)
+
+                RetrofitClient.apiService.signup(signupRequest)
+                    .enqueue(object : Callback<SignupResponse> {
+                        override fun onResponse(call: Call<SignupResponse>, response: Response<SignupResponse>) {
+                            if (response.isSuccessful && response.body()?.success == true) {
+                                startActivity(Intent(this@SignupActivity2, SignupCompleteActivity::class.java))
+                                finish()
+                            } else {
+                                Toast.makeText(this@SignupActivity2, "회원가입 실패: ${response.body()?.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+
+                        override fun onFailure(call: Call<SignupResponse>, t: Throwable) {
+                            Toast.makeText(this@SignupActivity2, "서버 오류: ${t.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    })
             }
         }
     }
 
-    // 💡 뷰들을 한 번에 연결하는 함수
     private fun initViews() {
-        // 아이디
         editTextId = findViewById(R.id.editTextId)
         btnCheckId = findViewById(R.id.btn_overlap)
         messageId = findViewById(R.id.message_id)
         iconName = findViewById(R.id.icon_name)
         textName = findViewById(R.id.text_name)
 
-        // 비밀번호
         password = findViewById(R.id.password)
         togglePw = findViewById(R.id.togglePw)
         messagePassword = findViewById(R.id.message_password)
         iconPassword = findViewById(R.id.icon_password)
         textPassword = findViewById(R.id.text_password)
 
-        // 비밀번호 확인
         rePassword = findViewById(R.id.re_password)
         toggleRePw = findViewById(R.id.toggle_rePw)
         messageRePassword = findViewById(R.id.message_re_password)
         iconRePassword = findViewById(R.id.icon_re_password)
         textRePassword = findViewById(R.id.text_re_password)
 
-        // 완료 버튼
         btnFinish = findViewById(R.id.btn_finish)
     }
-        private fun checkPasswordMatch() {
-            val pw = password.text.toString()
-            val rePw = rePassword.text.toString()
 
-            if (rePw.isEmpty()) {
-                messageRePassword.visibility = View.GONE
-                return
-            }
+    private fun checkPasswordMatch() {
+        val pw = password.text.toString()
+        val rePw = rePassword.text.toString()
 
-            messageRePassword.visibility = View.VISIBLE
-
-            if (pw == rePw) {
-                iconRePassword.setImageResource(R.drawable.ic_check)
-                textRePassword.setTextColor(Color.parseColor("#2BA600"))
-                textRePassword.text = "비밀번호가 일치합니다."
-            } else {
-                iconRePassword.setImageResource(R.drawable.ic_warning)
-                textRePassword.setTextColor(Color.RED)
-                textRePassword.text = "비밀번호가 일치하지 않습니다. 다시 입력해주세요."
-            }
+        if (rePw.isEmpty()) {
+            messageRePassword.visibility = View.GONE
+            return
         }
 
-        private fun updateFinishButtonState() {
-            val isIdAvailable = messageId.visibility == View.VISIBLE && textName.text.contains("사용 가능")
-            val isPwValid = messagePassword.visibility == View.GONE
-            val isPwMatch = messageRePassword.visibility == View.VISIBLE && textRePassword.text.contains("일치합니다")
-
-            val canRegister = isIdAvailable && isPwValid && isPwMatch
-
-            btnFinish.isEnabled = canRegister
-
-            val colorEnabled = Color.parseColor("#1C2444")
-            val colorDisabled = Color.parseColor("#999CAA")
-
-            btnFinish.setBackgroundTintList(
-                ColorStateList.valueOf(if (canRegister) colorEnabled else colorDisabled)
-            )
+        messageRePassword.visibility = View.VISIBLE
+        if (pw == rePw) {
+            iconRePassword.setImageResource(R.drawable.ic_check)
+            textRePassword.setTextColor(Color.parseColor("#2BA600"))
+            textRePassword.text = "비밀번호가 일치합니다."
+        } else {
+            iconRePassword.setImageResource(R.drawable.ic_warning)
+            textRePassword.setTextColor(Color.RED)
+            textRePassword.text = "비밀번호가 일치하지 않습니다. 다시 입력해주세요."
         }
     }
+
+    private fun updateFinishButtonState() {
+        val isIdAvailable = messageId.visibility == View.VISIBLE && textName.text.contains("사용 가능")
+        val isPwValid = messagePassword.visibility == View.GONE
+        val isPwMatch = messageRePassword.visibility == View.VISIBLE && textRePassword.text.contains("일치합니다")
+
+        val canRegister = isIdAvailable && isPwValid && isPwMatch
+        btnFinish.isEnabled = canRegister
+
+        btnFinish.setBackgroundTintList(
+            ColorStateList.valueOf(if (canRegister) Color.parseColor("#1C2444") else Color.parseColor("#999CAA"))
+        )
+    }
+}

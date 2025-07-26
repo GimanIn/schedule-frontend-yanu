@@ -13,7 +13,8 @@ import android.view.View
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AlertDialog
 
-class MypageActivity : AppCompatActivity() {
+class
+MypageActivity : AppCompatActivity() {
 
     private lateinit var nameText: TextView
     private lateinit var idText: TextView

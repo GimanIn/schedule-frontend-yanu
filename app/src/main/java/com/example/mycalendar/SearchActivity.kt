@@ -17,6 +17,8 @@ import androidx.appcompat.app.AlertDialog
 import java.time.LocalDate
 import android.view.LayoutInflater
 import android.widget.Toast
+import com.example.mycalendar.model.Schedule  // ✅ NEW: Schedule import 추가
+
 
 class SearchActivity : AppCompatActivity() {
 
@@ -31,7 +33,7 @@ class SearchActivity : AppCompatActivity() {
 
         // MainActivity로부터 전체 일정 목록을 받아옵니다.
         allSchedules = (intent.getSerializableExtra("allSchedules") as? ArrayList<Schedule> ?: emptyList())
-            .sortedBy { it.startDateTime } // 날짜순으로 정렬
+            .sortedWith(compareBy({ it.startDate }, { it.startTime })) // ✅ NEW: 날짜 + 시간 순 정렬
 
         val searchEditText = findViewById<EditText>(R.id.searchEditText)
         val cancelButton = findViewById<Button>(R.id.cancelButton)
@@ -50,8 +52,15 @@ class SearchActivity : AppCompatActivity() {
         }
 
         // 카테고리는 메모에서 추출 (임시)
-        val categories = listOf("모든 분야") + allSchedules.map { it.memo.split("\n")[0].replace("카테고리: ", "") }.distinct()
-        categoryFilterSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, categories)
+        val categories = listOf("모든 분야") + allSchedules.map {
+            it.memo?.split("\n")?.getOrNull(0)?.replace("카테고리: ", "")
+        }.distinct()
+
+        categoryFilterSpinner.adapter = ArrayAdapter<String>(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            categories
+        )
 
         cancelButton.setOnClickListener {
             finish()
@@ -136,14 +145,13 @@ class SearchActivity : AppCompatActivity() {
         val query = findViewById<EditText>(R.id.searchEditText).text.toString().lowercase()
 
         val filteredList = allSchedules.filter { schedule ->
-            val textMatch = schedule.title.lowercase().contains(query) || schedule.memo.lowercase().contains(query)
+            val textMatch = schedule.title.lowercase().contains(query) ||
+                    (schedule.memo?.lowercase()?.contains(query) ?: false)
 
             // 변경 가능한 var 속성을 변경 불가능한 val 지역 변수에 복사
-            val startDateTime = schedule.startDateTime
-
-            val dateMatch = if (filterStartDate != null && filterEndDate != null && startDateTime != null) {
-                val scheduleDate = startDateTime.toLocalDate()
-                !scheduleDate.isBefore(filterStartDate) && !scheduleDate.isAfter(filterEndDate)
+            val startDate = schedule.startDate
+            val dateMatch = if (filterStartDate != null && filterEndDate != null) {
+                !startDate.isBefore(filterStartDate) && !startDate.isAfter(filterEndDate)
             } else {
                 true
             }

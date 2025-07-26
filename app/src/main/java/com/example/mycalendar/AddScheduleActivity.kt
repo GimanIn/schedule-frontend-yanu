@@ -8,29 +8,24 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log // ✅ NEW
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.example.mycalendar.model.*
+import com.example.mycalendar.network.RetrofitClient
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.switchmaterial.SwitchMaterial
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import android.widget.PopupWindow
 
 class AddScheduleActivity : AppCompatActivity() {
 
-    // UI 요소를 멤버 변수로 선언
     private lateinit var titleEditText: EditText
     private lateinit var timeSwitch: SwitchMaterial
     private lateinit var alarmSwitch: SwitchMaterial
@@ -42,13 +37,14 @@ class AddScheduleActivity : AppCompatActivity() {
     private lateinit var endTimeText: TextView
     private lateinit var colorDot: View
 
-    // 데이터 변수
     private var startDate: LocalDate? = null
     private var endDate: LocalDate? = null
     private var startTime: LocalTime? = null
     private var endTime: LocalTime? = null
     private var selectedColor: Int = Color.parseColor("#4285F4")
     private var scheduleToEdit: Schedule? = null
+    private var finalStartDateTime: LocalDateTime? = null
+    private var finalEndDateTime: LocalDateTime? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +53,8 @@ class AddScheduleActivity : AppCompatActivity() {
         initViews()
         initData()
         setupListeners()
+
+        Log.d("AddScheduleActivity", "startDate 값: $startDate") // ✅ NEW
     }
 
     private fun initViews() {
@@ -80,20 +78,18 @@ class AddScheduleActivity : AppCompatActivity() {
             intent.getSerializableExtra("scheduleToEdit") as? Schedule
         }
 
-        // --- 👇 '복사 모드'를 처리하는 로직을 여기에 추가합니다 ---
         val isCopyMode = intent.getBooleanExtra("isCopyMode", false)
-
         val copyButton = findViewById<ImageButton>(R.id.copy_button)
 
-        if (scheduleToEdit != null) { // 수정 또는 복사 모드
+        if (scheduleToEdit != null) {
             val schedule = scheduleToEdit!!
             titleEditText.setText(schedule.title)
-            startDate = schedule.startDateTime?.toLocalDate()
-            endDate = schedule.endDateTime?.toLocalDate()
-            startTime = schedule.startDateTime?.toLocalTime()
-            endTime = schedule.endDateTime?.toLocalTime()
+            startDate = schedule.startDate
+            endDate = schedule.startDate
+            startTime = schedule.startTime
+            endTime = schedule.endTime
             selectedColor = schedule.color
-            alarmSwitch.isChecked = schedule.isAlarmOn
+            alarmSwitch.isChecked = schedule.alarmOn
             memoEditText.setText(schedule.memo)
             categoryEditText.setText(schedule.category)
             locationEditText.setText(schedule.location)
@@ -101,13 +97,12 @@ class AddScheduleActivity : AppCompatActivity() {
                 timeSwitch.isChecked = true
             }
 
-            // '복사 모드'라면, UI를 채운 뒤에 '새로 만들기' 상태로 전환
             if (isCopyMode) {
-                this.scheduleToEdit = null // this를 붙여 멤버 변수임을 명확히 함
+                this.scheduleToEdit = null // ✅ NEW
                 Toast.makeText(this, "일정이 복사되었습니다. 저장하여 새 일정으로 생성하세요.", Toast.LENGTH_LONG).show()
             }
-            copyButton.visibility = View.VISIBLE // 수정 모드일 때만 복사 버튼 보이기
-        } else { // 생성 모드
+            copyButton.visibility = View.VISIBLE
+        } else {
             val initialDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getSerializableExtra("selectedDate", LocalDate::class.java)
             } else {
@@ -116,13 +111,13 @@ class AddScheduleActivity : AppCompatActivity() {
             } ?: LocalDate.now()
             startDate = initialDate
             endDate = initialDate
-            copyButton.visibility = View.GONE // 생성 모드에서는 숨기기
+            copyButton.visibility = View.GONE
         }
 
         updateDateTextViews()
         colorDot.background.mutate().setTint(selectedColor)
         timePickerLayout.visibility = if (timeSwitch.isChecked) View.VISIBLE else View.GONE
-        if(timeSwitch.isChecked) {
+        if (timeSwitch.isChecked) {
             startTimeText.text = startTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "09:00"
             endTimeText.text = endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "10:00"
         }
@@ -136,27 +131,16 @@ class AddScheduleActivity : AppCompatActivity() {
 
         backButton.setOnClickListener { finish() }
 
-        // --- 👇 이 두 버튼의 리스너를 아래 코드로 교체해주세요 ---
-
-        // '저장' 버튼: 현재 상태(수정이든 생성이든)를 저장하고 화면을 닫습니다.
         saveButton.setOnClickListener {
             handleSave(isCopy = false)
         }
 
-        // '복사' 버튼: 현재 상태를 '새로운 일정 생성' 모드로 바꾸기만 합니다.
         copyButton.setOnClickListener {
-            // "수정 모드"를 해제하여, 다음에 저장할 때 새 ID를 받도록 합니다.
-            scheduleToEdit = null
-
-            // 사용자에게 상태가 변경되었음을 알립니다.
+            scheduleToEdit = null // ✅ NEW
             Toast.makeText(this, "일정이 복사되었습니다. 저장 버튼을 눌러 새 일정으로 생성하세요.", Toast.LENGTH_LONG).show()
-
-            // 혼동을 막기 위해 복사 버튼을 비활성화합니다.
             copyButton.isEnabled = false
             copyButton.alpha = 0.5f
         }
-
-        // --- 여기까지 교체 ---
 
         dateRangeLayout.setOnClickListener { openDateRangePicker() }
         timeSwitch.setOnCheckedChangeListener { _, isChecked -> handleTimeSwitch(isChecked) }
@@ -166,15 +150,53 @@ class AddScheduleActivity : AppCompatActivity() {
     }
 
     private fun handleSave(isCopy: Boolean) {
+        // ✅ startDate와 endDate null 체크 및 기본값 설정
+        if (startDate == null) startDate = LocalDate.now()
+        if (endDate == null) endDate = startDate
+
         val title = titleEditText.text.toString()
         if (title.isEmpty()) {
             Toast.makeText(this, "제목을 입력해주세요.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        var finalStartDateTime: LocalDateTime? = null
-        var finalEndDateTime: LocalDateTime? = null
+        // ✅ 날짜 포맷터
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val formattedStartDate = startDate!!.format(dateFormatter)
+        val formattedEndDate = endDate!!.format(dateFormatter)
 
+        // ✅ 디버그 로그 추가
+        Log.d("AddScheduleActivity", "저장 전 - startDate: $startDate, endDate: $endDate")
+        Log.d("AddScheduleActivity", "포맷된 날짜 - startDate: $formattedStartDate, endDate: $formattedEndDate")
+
+        // 복사 모드일 경우 copiedFromScheduleId를 설정
+        val copiedFromScheduleId = if (isCopy && scheduleToEdit != null) {
+            scheduleToEdit?.id
+        } else {
+            null
+        }
+
+        val request = ScheduleRequest(
+            title = title,
+            memo = memoEditText.text.toString().trim().ifBlank { null },
+            location = locationEditText.text.toString().trim().ifBlank { null },
+            category = categoryEditText.text.toString().trim().ifBlank { null },
+            scheduledDate = formattedStartDate, // 기존 필드 유지
+            startDate = formattedStartDate,     // ✅ 새로 추가
+            endDate = formattedEndDate,         // ✅ 새로 추가
+            startTime = if (timeSwitch.isChecked) startTime?.toString() else null,
+            endTime = if (timeSwitch.isChecked) endTime?.toString() else null,
+            allDay = !timeSwitch.isChecked,
+            isConfirmed = true,
+            color = String.format("#%06X", 0xFFFFFF and selectedColor),
+            alarmOn = alarmSwitch.isChecked,
+            copiedFromScheduleId = copiedFromScheduleId
+        )
+
+        // ✅ 요청 데이터 로그 출력
+        Log.d("AddScheduleActivity", "서버 요청 데이터: $request")
+
+        // 시작 및 종료 시간 설정
         if (timeSwitch.isChecked) {
             finalStartDateTime = LocalDateTime.of(startDate, startTime ?: LocalTime.of(9, 0))
             finalEndDateTime = LocalDateTime.of(endDate, endTime ?: LocalTime.of(10, 0))
@@ -183,39 +205,40 @@ class AddScheduleActivity : AppCompatActivity() {
             finalEndDateTime = endDate?.atTime(23, 59, 59)
         }
 
-        if (finalStartDateTime != null && finalEndDateTime != null && finalStartDateTime.isAfter(finalEndDateTime)) {
+        val start = finalStartDateTime
+        val end = finalEndDateTime
+        if (start != null && end != null && start.isAfter(end)) {
             Toast.makeText(this, "종료 시간이 시작 시간보다 빠를 수 없습니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // 서버에 일정 저장 요청
+        RetrofitClient.apiService.createSchedule(request).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+            override fun onResponse(
+                call: Call<ApiResponse<ScheduleResponse>>,
+                response: Response<ApiResponse<ScheduleResponse>>
+            ) {
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Log.d("AddScheduleActivity", "일정 저장 성공 ID: ${response.body()?.data?.id}")
+                    Toast.makeText(this@AddScheduleActivity, "일정이 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Log.e("AddScheduleActivity", "저장 실패 - Response: ${response.body()}")
+                    Toast.makeText(this@AddScheduleActivity, "저장 실패: ${response.body()?.message ?: "오류"}", Toast.LENGTH_LONG).show()
+                }
+            }
 
-        val scheduleId = if (scheduleToEdit != null && !isCopy) {
-            scheduleToEdit!!.id
-        } else {
-            java.util.UUID.randomUUID().toString()
-        }
-
-        val resultSchedule = Schedule(
-            id = scheduleId,
-            title = title,
-            startDateTime = finalStartDateTime,
-            endDateTime = finalEndDateTime,
-            color = selectedColor,
-            isAlarmOn = alarmSwitch.isChecked,
-            memo = memoEditText.text.toString().trim(),
-            category = categoryEditText.text.toString().trim(),
-            location = locationEditText.text.toString().trim(),
-            isConfirmed = true,
-            isPostponed = false,
-            documentId = scheduleToEdit?.documentId
-        )
-
-        val resultIntent = Intent()
-        val resultKey = if (scheduleToEdit != null && !isCopy) "updatedSchedule" else "newSchedule"
-        resultIntent.putExtra(resultKey, resultSchedule)
-        setResult(Activity.RESULT_OK, resultIntent)
-        finish()
+            override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                Log.e("AddScheduleActivity", "서버 요청 실패", t)
+                Toast.makeText(this@AddScheduleActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        })
     }
+
+
+
+
+
 
     private fun openDateRangePicker() {
         val datePicker = MaterialDatePicker.Builder.dateRangePicker().setTitleText("기간 선택").build()
@@ -261,17 +284,9 @@ class AddScheduleActivity : AppCompatActivity() {
     private fun openColorPicker() {
         val inflater = LayoutInflater.from(this)
         val popupView = inflater.inflate(R.layout.popup_color_palette, null)
-
-        // 1. PopupWindow를 생성합니다.
-        val popupWindow = PopupWindow(
-            popupView,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            true // 바깥 영역 터치 시 닫히도록 설정
-        )
+        val popupWindow = PopupWindow(popupView, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true)
         popupWindow.elevation = 20f
 
-        // 2. 각 색상 원에 실제 색을 칠하고, 클릭 리스너를 설정합니다.
         val colors = listOf(
             Pair(popupView.findViewById<View>(R.id.palette_color_1), "#4285F4"),
             Pair(popupView.findViewById<View>(R.id.palette_color_2), "#34A853"),
@@ -286,11 +301,10 @@ class AddScheduleActivity : AppCompatActivity() {
             colorView.setOnClickListener {
                 selectedColor = Color.parseColor(colorHex)
                 colorDot.background.mutate().setTint(selectedColor)
-                popupWindow.dismiss() // 색상 선택 시 팝업 닫기
+                popupWindow.dismiss()
             }
         }
 
-        // 3. colorDot을 기준으로 팝업을 보여줍니다.
         popupWindow.showAsDropDown(colorDot)
     }
 
