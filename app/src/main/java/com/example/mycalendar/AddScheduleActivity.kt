@@ -41,7 +41,6 @@ class AddScheduleActivity : AppCompatActivity() {
     private lateinit var startTimeText: TextView
     private lateinit var endTimeText: TextView
     private lateinit var colorDot: View
-    private lateinit var gestureDetector: GestureDetector
 
     private var startDate: LocalDate? = null
     private var endDate: LocalDate? = null
@@ -59,7 +58,6 @@ class AddScheduleActivity : AppCompatActivity() {
         initViews()
         initData()
         setupListeners()
-        setupGestureDetector()
     }
 
     private fun initViews() {
@@ -141,61 +139,6 @@ class AddScheduleActivity : AppCompatActivity() {
         startTimeText.setOnClickListener { openTimePicker(true) }
         endTimeText.setOnClickListener { openTimePicker(false) }
         colorDot.setOnClickListener { openColorPicker() }
-    }
-
-    private fun setupGestureDetector() {
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            private val SWIPE_THRESHOLD = 100
-            private val SWIPE_VELOCITY_THRESHOLD = 100
-
-            override fun onFling(
-                e1: MotionEvent?,
-                e2: MotionEvent,
-                velocityX: Float,
-                velocityY: Float
-            ): Boolean {
-                if (e1 == null || e2 == null) return false
-
-                val diffX = e2.x - e1.x
-                val diffY = e2.y - e1.y
-
-                if (
-                    kotlin.math.abs(diffX) > SWIPE_THRESHOLD &&
-                    kotlin.math.abs(diffX) > kotlin.math.abs(e2.y - e1.y) && // 바로 비교만 사용
-                    kotlin.math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD
-                ) {
-                    if (diffX > 0) {
-                        moveToPreviousDay()
-                    } else {
-                        moveToNextDay()
-                    }
-                    return true
-                }
-
-                return false
-            }
-        })
-    }
-
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        if (ev != null) {
-            gestureDetector.onTouchEvent(ev)
-        }
-        return super.dispatchTouchEvent(ev)
-    }
-
-    private fun moveToPreviousDay() {
-        startDate = startDate?.minusDays(1)
-        endDate = startDate
-        updateDateTextViews()
-        Toast.makeText(this, "전날 일정으로 이동", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun moveToNextDay() {
-        startDate = startDate?.plusDays(1)
-        endDate = startDate
-        updateDateTextViews()
-        Toast.makeText(this, "다음날 일정으로 이동", Toast.LENGTH_SHORT).show()
     }
 
     private fun handleSave(isCopy: Boolean) {
