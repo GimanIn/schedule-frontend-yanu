@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
 import java.time.LocalDate
-import java.time.DayOfWeek // ✅ NEW
+import java.time.DayOfWeek
 
 class CalendarAdapter(
     var dayList: ArrayList<LocalDate>, // 날짜 리스트
@@ -23,8 +23,8 @@ class CalendarAdapter(
 
     var selectedDate: LocalDate = LocalDate.now()
 
-    // ✅ schedule.id → 슬롯에 대응하는 map
-    private val scheduleIdToSlotMap = mutableMapOf<Long, Int>() // ✅ NEW
+    // schedule.id → 슬롯에 대응하는 map
+    private val scheduleIdToSlotMap = mutableMapOf<Long, Int>()
 
     inner class DayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val dayText: TextView = itemView.findViewById(R.id.dayText)
@@ -38,71 +38,75 @@ class CalendarAdapter(
 
     override fun onBindViewHolder(holder: DayViewHolder, position: Int) {
         val date = dayList.getOrNull(position)
-        if (date != null && date != LocalDate.MIN) {
-            holder.dayText.text = date.dayOfMonth.toString()
-            holder.itemView.visibility = View.VISIBLE
 
-            // ✅ 선택 날짜와 오늘 표시
-            holder.dayText.setTextColor(Color.BLACK)
-            holder.dayText.background = null
-            holder.itemView.background = null
-            if (date == selectedDate) {
-                holder.itemView.setBackgroundResource(R.drawable.selected_day_border)
-            }
-            if (date == LocalDate.now()) {
-                holder.dayText.setBackgroundResource(R.drawable.selected_day_background)
-                holder.dayText.setTextColor(Color.WHITE)
-            }
+        if (date == null || date == LocalDate.MIN) {
+            holder.itemView.visibility = View.INVISIBLE
+            return
+        }
 
-            holder.scheduleContainer.removeAllViews()
+        holder.dayText.text = date.dayOfMonth.toString()
+        holder.itemView.visibility = View.VISIBLE
 
-            // ✅ startTime 기준 정렬 (nullable 처리 포함)
-            val dailySchedules = schedules[date]?.distinctBy { it.id }?.sortedWith(
+        // 선택 날짜와 오늘 표시
+        holder.dayText.setTextColor(Color.BLACK)
+        holder.dayText.background = null
+        holder.itemView.background = null
+
+        if (date == selectedDate) {
+            holder.itemView.setBackgroundResource(R.drawable.selected_day_border)
+        }
+        if (date == LocalDate.now()) {
+            holder.dayText.setBackgroundResource(R.drawable.selected_day_background)
+            holder.dayText.setTextColor(Color.WHITE)
+        }
+
+        holder.scheduleContainer.removeAllViews()
+
+        // startTime 기준 정렬 (nullable 처리 포함)
+        val dailySchedules = schedules[date]
+            ?.sortedWith(
                 compareBy<Schedule> { it.startTime ?: java.time.LocalTime.MIN }
             ) ?: emptyList()
 
-            val scheduleSlots = arrayOfNulls<Schedule>(MAX_SCHEDULES_PER_DAY)
+        val scheduleSlots = arrayOfNulls<Schedule>(MAX_SCHEDULES_PER_DAY)
 
-            // ✅ id 기준으로 슬롯 재배치 (이전 스케줄 유지)
-            dailySchedules.forEach { schedule ->
-                schedule.id?.let { id ->
-                    if (scheduleIdToSlotMap.containsKey(id)) {
-                        val slot = scheduleIdToSlotMap[id]!!
-                        if (slot < scheduleSlots.size) {
-                            scheduleSlots[slot] = schedule
-                        }
+        // id 기준으로 슬롯 재배치 (이전 스케줄 유지)
+        dailySchedules.forEach { schedule ->
+            schedule.id?.let { id ->
+                if (scheduleIdToSlotMap.containsKey(id)) {
+                    val slot = scheduleIdToSlotMap[id]!!
+                    if (slot < scheduleSlots.size) {
+                        scheduleSlots[slot] = schedule
                     }
                 }
             }
-
-            // ✅ 아직 슬롯에 없는 스케줄 배치
-            dailySchedules.forEach { schedule ->
-                schedule.id?.let { id ->
-                    if (scheduleSlots.none { it?.id == id }) {
-                        for (i in scheduleSlots.indices) {
-                            if (scheduleSlots[i] == null) {
-                                scheduleSlots[i] = schedule
-                                scheduleIdToSlotMap[id] = i
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ✅ 렌더링
-            scheduleSlots.forEach { schedule ->
-                if (schedule != null) {
-                    addScheduleBar(holder, schedule, date)
-                } else {
-                    addEmptyBar(holder)
-                }
-            }
-
-            holder.itemView.setOnClickListener { onItemClicked(date) }
-        } else {
-            holder.itemView.visibility = View.INVISIBLE
         }
+
+        // 아직 슬롯에 없는 스케줄 배치
+        dailySchedules.forEach { schedule ->
+            schedule.id?.let { id ->
+                if (scheduleSlots.none { it?.id == id }) {
+                    for (i in scheduleSlots.indices) {
+                        if (scheduleSlots[i] == null) {
+                            scheduleSlots[i] = schedule
+                            scheduleIdToSlotMap[id] = i
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        // 렌더링
+        scheduleSlots.forEach { schedule ->
+            if (schedule != null) {
+                addScheduleBar(holder, schedule, date)
+            } else {
+                addEmptyBar(holder)
+            }
+        }
+
+        holder.itemView.setOnClickListener { onItemClicked(date) }
     }
 
     private fun addEmptyBar(holder: DayViewHolder) {
@@ -118,21 +122,19 @@ class CalendarAdapter(
 
     override fun onViewRecycled(holder: DayViewHolder) {
         super.onViewRecycled(holder)
-        if (holder.layoutPosition == 0) {
-            scheduleIdToSlotMap.clear()
-        }
+        // Do nothing or consider resetting per date instead
     }
 
     private fun addScheduleBar(holder: DayViewHolder, schedule: Schedule, date: LocalDate) {
-        val startDate = schedule.startDate // ✅ Schedule.kt 기준
-        val endDate = schedule.startDate   // ✅ endDate가 따로 없으므로 startDate만 사용
+        val startDate = schedule.startDate // Schedule.kt 기준
+        val endDate = schedule.endDate   // endDate가 따로 없으므로 startDate만 사용
 
-        // ✅ 범위 비교 (단일 날짜 기반 처리)
+        // 범위 비교 (단일 날짜 기반 처리)
         val prevDayInSchedule = date.minusDays(1) >= startDate
         val nextDayInSchedule = date.plusDays(1) <= endDate
 
-        val isFirstDayOfRow = date.dayOfWeek == DayOfWeek.SUNDAY // ✅ NEW
-        val isLastDayOfRow = date.dayOfWeek == DayOfWeek.SATURDAY // ✅ NEW
+        val isFirstDayOfRow = date.dayOfWeek == DayOfWeek.SUNDAY
+        val isLastDayOfRow = date.dayOfWeek == DayOfWeek.SATURDAY
 
         val startsOnThisCell = !prevDayInSchedule || isFirstDayOfRow
         val endsOnThisCell = !nextDayInSchedule || isLastDayOfRow
@@ -161,7 +163,9 @@ class CalendarAdapter(
 
             val background = ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
                 ?.mutate() as? GradientDrawable
-            background?.setColor(schedule.color)
+            val safeColor = schedule.color
+            background?.setColor(safeColor)
+
             this.background = background
 
             val layoutParams = LinearLayout.LayoutParams(

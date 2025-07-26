@@ -1,27 +1,22 @@
 package com.example.mycalendar
 
-import android.app.AlertDialog
 import android.content.*
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.*
 import android.widget.*
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
+import com.example.mycalendar.model.ScheduleRequest
 import com.google.android.material.switchmaterial.SwitchMaterial
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
 
-// ✅ 하드코딩된 값들 정리용 상수
-private const val DEFAULT_COLOR = Color.BLUE // NEW: 기본 색상 상수
-private const val EMPTY_STRING = ""          // NEW: 빈 문자열 상수
+private const val DEFAULT_COLOR = Color.BLUE
+private const val EMPTY_STRING = ""
 
 class ScheduleListDialog(
     private val date: LocalDate,
@@ -48,7 +43,7 @@ class ScheduleListDialog(
     private lateinit var detailAlarmSwitch: SwitchMaterial
     private val hourHeightDp = 60
 
-    private var dataChanged = false // NEW: onDismiss 시 변경 여부 체크용
+    private var dataChanged = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_schedule_list, container, false)
@@ -85,19 +80,13 @@ class ScheduleListDialog(
             dailySchedules,
             childFragmentManager,
             { schedule -> showDetailView(schedule) },
-            { schedule ->
-                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
-                dismiss()
-            },
-            { schedule ->
-                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = true)
-                dismiss()
-            },
+            { schedule -> dismiss() },  // 필요시 openEditScheduleActivity 다시 활성화
+            { schedule -> dismiss() },
             { schedule, position ->
                 (activity as? MainActivity)?.removeSchedule(schedule)
                 dailySchedules.removeAt(position)
                 scheduleListAdapter.notifyItemRemoved(position)
-                dataChanged = true // NEW: 변경 감지
+                dataChanged = true
                 Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
         )
@@ -105,32 +94,59 @@ class ScheduleListDialog(
         scheduleListRecyclerView.adapter = scheduleListAdapter
 
         addButtonDialog.setOnClickListener {
-            val title = scheduleEditTextDialog.text.toString().trim() // NEW: 공백 제거
+            val title = scheduleEditTextDialog.text.toString().trim()
             if (title.isNotEmpty()) {
                 try {
                     val newSchedule = Schedule(
                         id = 0L,
                         title = title,
-                        memo = EMPTY_STRING,        // NEW
-                        location = EMPTY_STRING,    // NEW
-                        category = EMPTY_STRING,    // NEW
-                        color = DEFAULT_COLOR,      // NEW
+                        memo = EMPTY_STRING,
+                        location = EMPTY_STRING,
+                        category = EMPTY_STRING,
+                        color = DEFAULT_COLOR,
                         startDate = date,
-                        endDate = date,             // NEW: 추가된 endDate
+                        endDate = date,
                         startTime = null,
                         endTime = null,
                         isConfirmed = false,
                         alarmOn = false,
-                        isDeleted = false,          // NEW: 추가된 isDeleted
-                        copiedFromScheduleId = null, // NEW: 추가된 copiedFromScheduleId
-                        createdAt = null,           // NEW: 추가된 createdAt
-                        updatedAt = null            // NEW: 추가된 updatedAt
+                        isDeleted = false,
+                        copiedFromScheduleId = null,
+                        createdAt = null,
+                        updatedAt = null,
+                        scheduledDate = date
                     )
-                    (activity as? MainActivity)?.addSchedule(newSchedule)
+
+                    // UI 추가
                     dailySchedules.add(newSchedule)
                     scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
+                    (activity as? MainActivity)?.addSchedule(newSchedule)
+
+                    // 서버 전송용 ScheduleRequest 생성
+                    val request = ScheduleRequest(
+                        title = title,
+                        memo = EMPTY_STRING,
+                        location = EMPTY_STRING,
+                        category = EMPTY_STRING,
+                        scheduledDate = date.toString(),
+                        startDate = date.toString(),
+                        endDate = date.toString(),
+                        startTime = null,
+                        endTime = null,
+                        allDay = false,
+                        isConfirmed = false,
+                        color = "#4285F4",
+                        alarmOn = false,
+                        copiedFromScheduleId = null
+                    )
+
+                    (activity as? MainActivity)?.addSchedule(request)
+
+                    // UI 초기화
                     scheduleEditTextDialog.text.clear()
-                    dataChanged = true // NEW
+                    dataChanged = true
+                    onDataChanged()
+
                 } catch (e: Exception) {
                     Toast.makeText(context, "일정 추가 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 }
@@ -165,7 +181,6 @@ class ScheduleListDialog(
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        if (dataChanged) onDataChanged() // NEW: 변경 시에만 콜백 호출
+        if (dataChanged) onDataChanged()
     }
 }
-

@@ -71,9 +71,13 @@ dependencies {
 
     // ✅ PowerMenu (선택적인 메뉴 기능)
     implementation("com.github.skydoves:powermenu:2.2.4")
+    //추가
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 
     // ✅ Unit 테스트
     testImplementation("junit:junit:4.13.2")
+
+
 
     // ✅ Android 테스트
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

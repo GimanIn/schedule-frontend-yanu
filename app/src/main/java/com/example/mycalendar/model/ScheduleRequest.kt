@@ -3,7 +3,7 @@ package com.example.mycalendar.model
 // 🔧 NEW: Schedule 클래스 import
 import com.example.mycalendar.model.Schedule
 
-// model/ScheduleRequest.kt
+// 일정 생성 또는 수정 시 서버로 보내는 데이터 구조
 data class ScheduleRequest(
     val title: String,
     val memo: String?,

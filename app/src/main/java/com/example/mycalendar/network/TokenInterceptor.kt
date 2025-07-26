@@ -37,7 +37,7 @@ class TokenInterceptor(private val context: Context) : Interceptor {
             val refreshRequestBody = refreshJson.toRequestBody(mediaType)
 
             val refreshRequest = Request.Builder()
-                .url("http://10.0.2.2:8080/api/auth/refresh") // 로컬 서버 주소
+                .url("http://10.0.2.2:8081/api/auth/refresh") // 로컬 서버 주소
                 .post(refreshRequestBody)
                 .build()
 
