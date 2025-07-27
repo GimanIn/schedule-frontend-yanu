@@ -395,7 +395,7 @@ class MainActivity : AppCompatActivity() {
             if (updatedSchedule != null) {
                 // 수정된 일정이 있다면 -> 기존 것 삭제 후 새로 추가
                 removeSchedule(updatedSchedule)
-                addSchedule(updatedSchedule)
+                addScheduleToMap(updatedSchedule)
             } else {
                 // 2. "updatedSchedule"가 없다면, "newSchedule" 키로 복사된 새 일정이 있는지 확인
                 val copiedSchedule =

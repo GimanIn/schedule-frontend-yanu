@@ -98,10 +98,18 @@ class ScheduleListDialog(
         scheduleListAdapter = ScheduleListAdapter(
             dailySchedules,
             childFragmentManager,
-            { schedule -> showDetailView(schedule) },
-            { schedule -> dismiss() },
-            { schedule -> dismiss() },
-            { schedule, position ->
+            onScheduleClicked = { schedule -> showDetailView(schedule) },
+            // ✅ [수정] '편집' 클릭 시 MainActivity의 수정 함수를 호출하도록 변경
+            onEditClicked = { schedule ->
+                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
+                dismiss()
+            },
+            // ✅ [수정] '복사' 클릭 시 MainActivity의 복사 함수를 호출하도록 변경
+            onCopyClicked = { schedule ->
+                (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = true)
+                dismiss()
+            },
+            onDeleteClicked = { schedule, position ->
                 (activity as? MainActivity)?.removeSchedule(schedule)
                 dailySchedules.removeAt(position)
                 scheduleListAdapter.notifyItemRemoved(position)
@@ -339,7 +347,13 @@ class ScheduleListDialog(
         addScheduleBlockToTimeline(schedule)
 
         val currentColorView = detailViewContainer.findViewById<View>(R.id.currentColorView)
-        (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+        // ✅ [수정] 기존 배경을 바꾸는 대신, 항상 새 동그라미 Drawable을 만들어줍니다.
+        // 이렇게 하면 다른 버튼의 배경과 완전히 분리됩니다.
+        val newColorDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(schedule.color)
+        }
+        currentColorView.background = newColorDrawable
 
         currentColorView.setOnClickListener { colorDotView ->
             val inflater = LayoutInflater.from(requireContext())
@@ -369,7 +383,12 @@ class ScheduleListDialog(
                 )
                 colorView.setOnClickListener {
                     schedule.color = Color.parseColor(colorHex)
-                    (currentColorView.background.mutate() as? GradientDrawable)?.setColor(schedule.color)
+                    // ✅ [수정] 여기도 마찬가지로 새 Drawable을 만들어 적용합니다.
+                    val selectedColorDrawable = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(schedule.color)
+                    }
+                    currentColorView.background = selectedColorDrawable
                     addScheduleBlockToTimeline(schedule) // 1. 타임라인 블록을 새 색상으로 다시 그립니다.
                     onDataChanged() // 2. MainActivity에 데이터가 변경되었음을 즉시 알립니다.
                     popupWindow.dismiss()

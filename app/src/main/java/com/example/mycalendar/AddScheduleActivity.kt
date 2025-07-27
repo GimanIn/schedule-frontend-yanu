@@ -48,8 +48,6 @@ class AddScheduleActivity : AppCompatActivity() {
     private var endTime: LocalTime? = null
     private var selectedColor: Int = Color.parseColor("#4285F4")
     private var scheduleToEdit: Schedule? = null
-    private var finalStartDateTime: LocalDateTime? = null
-    private var finalEndDateTime: LocalDateTime? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,7 +94,14 @@ class AddScheduleActivity : AppCompatActivity() {
             memoEditText.setText(schedule.memo)
             categoryEditText.setText(schedule.category)
             locationEditText.setText(schedule.location)
-            if (startTime != null) timeSwitch.isChecked = true
+            if (startTime != null) {
+                timeSwitch.isChecked = true
+
+                // ⭐️ [수정 2] 수정 모드일 때 시간 텍스트를 직접 설정해줍니다.
+                val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                startTimeText.text = startTime?.format(timeFormatter)
+                endTimeText.text = endTime?.format(timeFormatter)
+            }
             if (isCopyMode) {
                 this.scheduleToEdit = null
                 Toast.makeText(this, "일정이 복사되었습니다. 저장하여 새 일정으로 생성하세요.", Toast.LENGTH_LONG).show()
@@ -151,16 +156,24 @@ class AddScheduleActivity : AppCompatActivity() {
             return
         }
 
+        // ⭐️ [최종 수정] 서버가 원하는 형식에 맞게 데이터를 준비합니다.
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        val formattedStartDate = startDate!!.format(dateFormatter)
-        val formattedEndDate = endDate!!.format(dateFormatter)
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss") // 초까지 보내는 것이 더 안전할 수 있습니다.
+
+        val finalStartDateTime: LocalDateTime
+        val finalEndDateTime: LocalDateTime
 
         if (timeSwitch.isChecked) {
             finalStartDateTime = LocalDateTime.of(startDate, startTime ?: LocalTime.of(9, 0))
             finalEndDateTime = LocalDateTime.of(endDate, endTime ?: LocalTime.of(10, 0))
         } else {
-            finalStartDateTime = startDate?.atStartOfDay()
-            finalEndDateTime = endDate?.atTime(23, 59, 59)
+            finalStartDateTime = startDate!!.atStartOfDay()
+            finalEndDateTime = endDate!!.atTime(23, 59, 59)
+        }
+
+        if (finalStartDateTime.isAfter(finalEndDateTime)) {
+            Toast.makeText(this, "종료 시간이 시작 시간보다 빠를 수 없습니다.", Toast.LENGTH_SHORT).show()
+            return
         }
 
         val start = finalStartDateTime
@@ -170,16 +183,18 @@ class AddScheduleActivity : AppCompatActivity() {
             return
         }
 
+        // ⭐️ [최종 수정] Schedule.java 설계도에 맞춰 날짜와 시간을 분리해서 Request 객체를 만듭니다.
         val request = ScheduleRequest(
             title = title,
             memo = memoEditText.text.toString().trim().ifBlank { null },
             location = locationEditText.text.toString().trim().ifBlank { null },
             category = categoryEditText.text.toString().trim().ifBlank { null },
-            scheduledDate = formattedStartDate,
-            startDate = formattedStartDate,
-            endDate = formattedEndDate,
-            startTime = if (timeSwitch.isChecked) startTime?.toString() else null,
-            endTime = if (timeSwitch.isChecked) endTime?.toString() else null,
+            // ✅ [수정] .toString() 대신 만들어둔 dateFormatter를 사용합니다.
+            scheduledDate = finalStartDateTime.toLocalDate().format(dateFormatter),
+            startDate = finalStartDateTime.toLocalDate().format(dateFormatter),
+            endDate = finalEndDateTime.toLocalDate().format(dateFormatter),
+            startTime = if (timeSwitch.isChecked) finalStartDateTime.toLocalTime().format(timeFormatter) else null,
+            endTime = if (timeSwitch.isChecked) finalEndDateTime.toLocalTime().format(timeFormatter) else null,
             allDay = !timeSwitch.isChecked,
             isConfirmed = true,
             color = String.format("#%06X", 0xFFFFFF and selectedColor),
@@ -187,26 +202,44 @@ class AddScheduleActivity : AppCompatActivity() {
             copiedFromScheduleId = if (isCopy) scheduleToEdit?.id else null
         )
 
-        RetrofitClient.apiService.createSchedule(request).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
-            override fun onResponse(call: Call<ApiResponse<ScheduleResponse>>, response: Response<ApiResponse<ScheduleResponse>>) {
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val schedule = response.body()?.data?.let { ScheduleMapper.toSchedule(it) }
-                    val resultIntent = Intent()
-                    // 🔁 이 코드로 수정하세요
-                    resultIntent.putExtra("newSchedule", schedule as Serializable)
-
-                    setResult(Activity.RESULT_OK, resultIntent)
-                    Toast.makeText(this@AddScheduleActivity, "일정이 저장되었습니다.", Toast.LENGTH_SHORT).show()
-                    finish()
-                } else {
-                    Toast.makeText(this@AddScheduleActivity, "저장 실패: ${response.body()?.message ?: "오류"}", Toast.LENGTH_LONG).show()
+        if (scheduleToEdit != null && !isCopy) {
+            // --- ✏️ 수정 모드일 때 ---
+            val scheduleId = scheduleToEdit!!.id!!
+            RetrofitClient.apiService.updateSchedule(scheduleId, request).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+                override fun onResponse(call: Call<ApiResponse<ScheduleResponse>>, response: Response<ApiResponse<ScheduleResponse>>) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val updatedSchedule = response.body()?.data?.let { ScheduleMapper.toSchedule(it) }
+                        val resultIntent = Intent().putExtra("updatedSchedule", updatedSchedule as Serializable)
+                        setResult(Activity.RESULT_OK, resultIntent)
+                        Toast.makeText(this@AddScheduleActivity, "일정이 수정되었습니다.", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this@AddScheduleActivity, "수정 실패: ${response.message()}", Toast.LENGTH_LONG).show()
+                    }
                 }
-            }
-
-            override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
-                Toast.makeText(this@AddScheduleActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_LONG).show()
-            }
-        })
+                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                    Toast.makeText(this@AddScheduleActivity, "서버 연결 오류: ${t.message}", Toast.LENGTH_LONG).show()
+                }
+            })
+        } else {
+            // --- ✨ 생성 모드일 때 ---
+            RetrofitClient.apiService.createSchedule(request).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+                override fun onResponse(call: Call<ApiResponse<ScheduleResponse>>, response: Response<ApiResponse<ScheduleResponse>>) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val schedule = response.body()?.data?.let { ScheduleMapper.toSchedule(it) }
+                        val resultIntent = Intent().putExtra("newSchedule", schedule as Serializable)
+                        setResult(Activity.RESULT_OK, resultIntent)
+                        Toast.makeText(this@AddScheduleActivity, "일정이 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this@AddScheduleActivity, "저장 실패: ${response.message()}", Toast.LENGTH_LONG).show()
+                    }
+                }
+                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                    Toast.makeText(this@AddScheduleActivity, "서버 연결 오류: ${t.message}", Toast.LENGTH_LONG).show()
+                }
+            })
+        }
     }
 
     private fun updateDateTextViews() {

@@ -165,19 +165,25 @@ class CalendarAdapter(
             else -> R.drawable.schedule_bar_middle
         }
 
-        val categoryPrefix = schedule.category?.takeIf { it.isNotBlank() }?.let {
-            "${it.first()}) "
-        } ?: ""
-
+        // 1. 먼저 제목이 표시되어야 하는지 확인합니다.
         val titleText = if (currentDate == startDate || (isFirstDayOfRow && !currentDate.isBefore(startDate))) {
             schedule.title
         } else {
             ""
         }
-        val title = "$categoryPrefix$titleText"
+
+        // 2. 제목이 있을 경우에만 카테고리 접두사를 붙여줍니다.
+        val finalTitle = if (titleText.isNotEmpty()) {
+            val categoryPrefix = schedule.category?.takeIf { it.isNotBlank() }?.let {
+                "${it.first()}) "
+            } ?: ""
+            "$categoryPrefix$titleText"
+        } else {
+            "" // 제목이 없으면 카테고리도 표시하지 않습니다.
+        }
 
         val scheduleView = TextView(holder.itemView.context).apply {
-            text = title
+            text = finalTitle
             textSize = 10f
             isSingleLine = true
             setTextColor(Color.WHITE)
