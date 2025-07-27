@@ -50,6 +50,17 @@ class MainActivity : AppCompatActivity() {
     private var selectedDate: LocalDate = LocalDate.now()
     private var copiedFromScheduleId: Long? = null
 
+    // ✅ [추가] 알림 권한 요청 결과를 처리하는 런처
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "알림 권한이 허용되었습니다.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "알림 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private val addScheduleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -188,8 +199,27 @@ class MainActivity : AppCompatActivity() {
             override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
+
+        // ✅ [추가] onCreate가 끝날 때 알림 권한을 요청합니다.
+        askNotificationPermission()
     }
 
+    // ✅ [추가] 알림 권한을 요청하는 함수
+    private fun askNotificationPermission() {
+        // 안드로이드 13 (Tiramisu, API 33) 이상인지 확인
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // 권한이 이미 부여되었는지 확인
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                // 이미 권한이 있으면 아무것도 하지 않음
+                Log.d("Permission", "알림 권ahan이 이미 허용되어 있습니다.")
+            } else {
+                // 권한이 없다면, 사용자에게 권한 요청 대화상자를 띄웁니다.
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     fun addSchedule(schedule: Schedule) {
         val key = schedule.scheduledDate
