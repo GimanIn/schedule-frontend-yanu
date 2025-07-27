@@ -32,7 +32,9 @@ class ScheduleListDialog(
     private val date: LocalDate,
     private val dailySchedules: MutableList<Schedule>,
     private val onDataChanged: () -> Unit,
-    private val onAddNewSchedule: (LocalDate) -> Unit
+    private val onAddNewSchedule: (LocalDate) -> Unit,
+    // ⭐️ [수정 1] 상세보기를 바로 보여줄 스케줄을 받는 파라미터 추가
+    private val scheduleToShowDetailsFor: Schedule? = null
 ) : DialogFragment() {
 
     // [스와이프] 제스처 감지기와 현재 날짜를 관리할 변수 선언
@@ -70,6 +72,15 @@ class ScheduleListDialog(
         setupGestureDetector()
 
         return view
+    }
+
+    // ⭐️ [수정 2] onViewCreated 추가: 뷰가 완전히 생성된 후 특정 상세보기를 바로 띄움
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // 만약 상세보기를 보여줘야 할 스케줄이 있다면, 바로 showDetailView 함수를 호출
+        scheduleToShowDetailsFor?.let {
+            showDetailView(it)
+        }
     }
 
     private fun initViews(view: View) {

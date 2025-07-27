@@ -1,5 +1,6 @@
 package com.example.mycalendar
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -43,7 +44,31 @@ class SearchActivity : AppCompatActivity() {
         val categoryFilterSpinner = findViewById<Spinner>(R.id.categoryFilterSpinner)
 
         // 어댑터 설정
-        searchAdapter = SearchListAdapter(allSchedules)
+        // ⭐️ [수정] 어댑터를 생성할 때, 클릭 시의 동작을 아래와 같이 수정합니다.
+        searchAdapter = SearchListAdapter(allSchedules) { clickedSchedule ->
+            val clickedDate = clickedSchedule.startDate
+
+            val schedulesForDay = allSchedules.filter { schedule ->
+                !clickedDate.isBefore(schedule.startDate) && !clickedDate.isAfter(schedule.endDate)
+            }.toMutableList()
+
+            val dialog = ScheduleListDialog(
+                date = clickedDate,
+                dailySchedules = schedulesForDay,
+                // ✅ [수정] 이 파라미터에 클릭된 일정을 넘겨줍니다.
+                scheduleToShowDetailsFor = clickedSchedule,
+                onDataChanged = {
+                    filterSchedules()
+                },
+                onAddNewSchedule = { date ->
+                    val intent = Intent(this, AddScheduleActivity::class.java)
+                    intent.putExtra("selectedDate", date)
+                    startActivity(intent)
+                }
+            )
+            dialog.show(supportFragmentManager, "ScheduleListDialog")
+        }
+
         searchResultsRecyclerView.layoutManager = LinearLayoutManager(this)
         searchResultsRecyclerView.adapter = searchAdapter
 

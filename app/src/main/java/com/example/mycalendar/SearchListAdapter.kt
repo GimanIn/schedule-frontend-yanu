@@ -10,7 +10,9 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalTime
 
 class SearchListAdapter(
-    private var scheduleList: List<Schedule>
+    private var scheduleList: List<Schedule>,
+    // ⭐️ [수정 1] 클릭 이벤트를 전달할 콜백 함수를 생성자에 추가합니다.
+    private val onItemClicked: (Schedule) -> Unit
 ) : RecyclerView.Adapter<SearchListAdapter.ViewHolder>() {
 
     // ✅ NEW: 날짜/시간 포맷 공통 상수로 분리
@@ -58,6 +60,10 @@ class SearchListAdapter(
         } else {
             // 기존: startTime이 없으면 시간 텍스트 숨김
             holder.timeText.visibility = View.VISIBLE
+        }
+        // ⭐️ [수정 2] 아이템 뷰에 클릭 리스너를 설정하고, 콜백 함수를 호출합니다.
+        holder.itemView.setOnClickListener {
+            onItemClicked(schedule)
         }
     }
 
