@@ -12,12 +12,6 @@ import java.time.LocalTime
 import android.graphics.drawable.GradientDrawable
 import java.time.format.DateTimeFormatter
 import android.net.Uri
-
-
-
-
-
-
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
@@ -26,6 +20,10 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
+
+// [스와이프] 제스처 감지를 위한 import 문 추가
+import android.view.GestureDetector
+import android.view.MotionEvent
 
 private const val DEFAULT_COLOR = Color.BLUE
 private const val EMPTY_STRING = ""
@@ -36,6 +34,10 @@ class ScheduleListDialog(
     private val onDataChanged: () -> Unit,
     private val onAddNewSchedule: (LocalDate) -> Unit
 ) : DialogFragment() {
+
+    // [스와이프] 제스처 감지기와 현재 날짜를 관리할 변수 선언
+    private lateinit var gestureDetector: GestureDetector
+    private var currentDate: LocalDate = date // ✅ [수정] 생성자로 받은 'date'로 현재 날짜를 초기화합니다.
 
     private lateinit var listViewContainer: View
     private lateinit var detailViewContainer: View
@@ -63,6 +65,10 @@ class ScheduleListDialog(
         initViews(view)
         setupListView()
         setupDetailViewListeners()
+
+        // [스와이프] 제스처 감지기 설정 및 뷰에 터치 리스너 연결
+        setupGestureDetector()
+
         return view
     }
 
@@ -177,7 +183,62 @@ class ScheduleListDialog(
             detailViewContainer.visibility = View.GONE
 
         }
+        // ⭐️ [수정] RecyclerView에 직접 터치 리스너를 추가하는 안정적인 방식으로 변경합니다.
+        scheduleListRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                // 터치 이벤트를 제스처 감지기에 전달합니다.
+                gestureDetector.onTouchEvent(e)
+                // false를 반환하여 클릭 등 다른 이벤트가 막히지 않도록 합니다.
+                return false
+            }
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
     }
+
+    // --- ⭐️ [스와이프] 핵심 기능 함수들 ⭐️ ---
+
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(requireContext(), object : GestureDetector.SimpleOnGestureListener() {
+            private val SWIPE_THRESHOLD = 100
+            private val SWIPE_VELOCITY_THRESHOLD = 100
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 == null) return false
+                val diffX = e2.x - e1.x
+                if (kotlin.math.abs(diffX) > SWIPE_THRESHOLD && kotlin.math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX > 0) moveToPreviousDay() else moveToNextDay()
+                    return true
+                }
+                return false
+            }
+        })
+    }
+
+    private fun moveToPreviousDay() {
+        currentDate = currentDate.minusDays(1)
+        refreshSchedules()
+    }
+
+    private fun moveToNextDay() {
+        currentDate = currentDate.plusDays(1)
+        refreshSchedules()
+    }
+
+    private fun refreshSchedules() {
+        // 스와이프 시 변경된 날짜로 제목과 힌트를 업데이트합니다.
+        val dayOfWeek = currentDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREA)
+        titleTextView.text = "${currentDate.dayOfMonth} ${dayOfWeek}"
+        scheduleEditTextDialog.hint = "${currentDate.monthValue}월 ${currentDate.dayOfMonth}일에 추가"
+
+        // MainActivity로부터 새 날짜의 일정 데이터를 가져옵니다.
+        val newSchedules = (activity as? MainActivity)?.getSchedulesForDate(currentDate)?.toMutableList() ?: mutableListOf()
+
+        // 어댑터의 데이터를 교체하고 UI를 갱신합니다.
+        dailySchedules.clear()
+        dailySchedules.addAll(newSchedules)
+        scheduleListAdapter.notifyDataSetChanged()
+    }
+
     private fun addScheduleBlockToTimeline(schedule: Schedule) {
         scheduleBlocksContainer.removeAllViews()
 

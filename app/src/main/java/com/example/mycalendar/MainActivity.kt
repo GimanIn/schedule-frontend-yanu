@@ -492,7 +492,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getSchedulesForDate(date: LocalDate): List<Schedule> {
+    fun getSchedulesForDate(date: LocalDate): List<Schedule> {
         return schedules[date] ?: emptyList()
     }
 
