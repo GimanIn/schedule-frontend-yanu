@@ -1,6 +1,5 @@
 package com.example.mycalendar
 
-
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
@@ -73,8 +72,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -168,25 +165,71 @@ class MainActivity : AppCompatActivity() {
         }
         addButton.setOnClickListener { handleAddButtonClick() }
 
-        // AI 요약 버튼
+        // ✅ AI 요약 버튼 - 백엔드 연동
         findViewById<ImageButton>(R.id.aiButton)?.setOnClickListener {
-            // AlertDialog를 사용해 커스텀 뷰를 띄웁니다.
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
-            val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
-            val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
+            Log.d("AI_SUMMARY", "AI 요약 버튼 클릭됨")
 
-            // 현재 날짜를 표시
-            val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
-            summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
+            val loadingDialog = AlertDialog.Builder(this)
+                .setMessage("AI가 일정을 요약하고 있습니다...")
+                .setCancelable(false)
+                .create()
 
-            // TODO: 여기에 나중에 백엔드로부터 AI 요약 내용을 받아와
-            // summaryContentText.text에 설정하는 코드가 들어갑니다.
+            loadingDialog.show()
+            val today = LocalDate.now().toString()
+            RetrofitClient.apiService.getAiSummary(today)
+                .enqueue(object : Callback<AiSummaryResponse> {
+                    // ✅ 메서드 시그니처 수정: Call<AiSummaryResponse>, Response<AiSummaryResponse>
+                    override fun onResponse(
+                        call: Call<AiSummaryResponse>,
+                        response: Response<AiSummaryResponse>
+                    ) {
+                        loadingDialog.dismiss()
 
-            AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setPositiveButton("닫기", null)
-                .show()
+                        Log.d("AI_SUMMARY", "HTTP 상태 코드: ${response.code()}")
+                        Log.d("AI_SUMMARY", "응답 성공 여부: ${response.isSuccessful}")
+
+                        if (response.isSuccessful) {
+                            val summaryResponse = response.body()
+                            Log.d("AI_SUMMARY", "응답 데이터: $summaryResponse")
+
+                            if (summaryResponse != null && !summaryResponse.summary.isNullOrBlank()) {
+                                Log.d("AI_SUMMARY", "✅ AI 요약 성공!")
+                                Log.d("AI_SUMMARY", "요약 내용 길이: ${summaryResponse.summary.length}")
+                                showAiSummaryDialog(summaryResponse.summary)
+                            } else {
+                                Log.e("AI_SUMMARY", "❌ 요약 내용이 비어있음")
+                                Toast.makeText(this@MainActivity, "AI 요약 내용이 비어있습니다.", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            val errorBody = response.errorBody()?.string()
+                            Log.e("AI_SUMMARY", "❌ HTTP 오류 - 코드: ${response.code()}")
+                            Log.e("AI_SUMMARY", "에러 바디: $errorBody")
+
+                            when (response.code()) {
+                                401 -> Toast.makeText(this@MainActivity, "인증이 만료되었습니다.", Toast.LENGTH_SHORT).show()
+                                404 -> Toast.makeText(this@MainActivity, "AI 요약 서비스를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                                500 -> Toast.makeText(this@MainActivity, "서버 내부 오류입니다.", Toast.LENGTH_SHORT).show()
+                                else -> Toast.makeText(this@MainActivity, "AI 요약 실패 (${response.code()})", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+
+                    // ✅ 메서드 시그니처 수정: Call<AiSummaryResponse>
+                    override fun onFailure(call: Call<AiSummaryResponse>, t: Throwable) {
+                        loadingDialog.dismiss()
+                        Log.e("AI_SUMMARY", "❌ 네트워크 오류", t)
+
+                        val errorMessage = when {
+                            t.message?.contains("timeout") == true -> "서버 응답 시간 초과"
+                            t.message?.contains("connect") == true -> "서버 연결 실패"
+                            else -> "네트워크 오류: ${t.localizedMessage}"
+                        }
+
+                        Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_LONG).show()
+                    }
+                })
         }
+
 
         gestureDetector = GestureDetector(this, SwipeGestureListener())
 
@@ -204,6 +247,25 @@ class MainActivity : AppCompatActivity() {
         askNotificationPermission()
     }
 
+    // ✅ AI 요약 다이얼로그를 표시하는 메서드
+    private fun showAiSummaryDialog(summaryText: String) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
+        val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
+        val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
+
+        // 현재 날짜를 표시
+        val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
+        summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
+
+        // 백엔드에서 받은 AI 요약 내용을 표시
+        summaryContentText.text = summaryText
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("닫기", null)
+            .show()
+    }
+
     // ✅ [추가] 알림 권한을 요청하는 함수
     private fun askNotificationPermission() {
         // 안드로이드 13 (Tiramisu, API 33) 이상인지 확인
@@ -213,7 +275,7 @@ class MainActivity : AppCompatActivity() {
                 PackageManager.PERMISSION_GRANTED
             ) {
                 // 이미 권한이 있으면 아무것도 하지 않음
-                Log.d("Permission", "알림 권ahan이 이미 허용되어 있습니다.")
+                Log.d("Permission", "알림 권한이 이미 허용되어 있습니다.")
             } else {
                 // 권한이 없다면, 사용자에게 권한 요청 대화상자를 띄웁니다.
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -360,7 +422,6 @@ class MainActivity : AppCompatActivity() {
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
         calendarRecyclerView.adapter = calendarAdapter
 
-
         // 1. 우리가 만든 제스처 리스너를 사용하여 제스처 감지기를 생성합니다.
         var gestureDetector: GestureDetector
         gestureDetector = GestureDetector(this, SwipeGestureListener())
@@ -388,30 +449,30 @@ class MainActivity : AppCompatActivity() {
         calendarAdapter.notifyDataSetChanged()
         updateScheduleHint(selectedDate)
     }
+
     override fun onNewIntent(intent: Intent) {
-            super.onNewIntent(intent)
-            handleIntent(intent)
-            updateCalendar()
+        super.onNewIntent(intent)
+        handleIntent(intent)
+        updateCalendar()
     }
 
     private fun handleIntent(intent: Intent) {
-            val y = intent.getIntExtra("targetYear", LocalDate.now().year)
-            val m = intent.getIntExtra("targetMonth", LocalDate.now().monthValue)
-            selectedDate = LocalDate.of(y, m, 1)
+        val y = intent.getIntExtra("targetYear", LocalDate.now().year)
+        val m = intent.getIntExtra("targetMonth", LocalDate.now().monthValue)
+        selectedDate = LocalDate.of(y, m, 1)
     }
-
-
-
 
     private fun openAddScheduleActivity(date: LocalDate) {
         val intent = Intent(this, AddScheduleActivity::class.java)
         intent.putExtra("selectedDate", date)
         addScheduleLauncher.launch(intent)
     }
+
     // --- 👇 1. 수정 전용 결과 처리기를 새로 추가합니다. ---
     val editScheduleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("EDIT", "=== 결과: ${result.resultCode} ===")
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
             // 1. "updatedSchedule" 키로 수정된 일정이 있는지 먼저 확인
@@ -423,6 +484,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             if (updatedSchedule != null) {
+                Log.d("EDIT", "수정됨: ${updatedSchedule.title}")
                 // 수정된 일정이 있다면 -> 기존 것 삭제 후 새로 추가
                 removeSchedule(updatedSchedule)
                 addScheduleToMap(updatedSchedule)
@@ -436,6 +498,7 @@ class MainActivity : AppCompatActivity() {
                         data?.getSerializableExtra("newSchedule") as? Schedule
                     }
                 if (copiedSchedule != null) {
+                    Log.d("EDIT", "복사됨: ${copiedSchedule.title}")
                     // 복사된 새 일정이 있다면 -> 그냥 추가
                     addSchedule(copiedSchedule)
                 }
@@ -462,8 +525,8 @@ class MainActivity : AppCompatActivity() {
                 entries.remove()
             }
         }
+        updateCalendar()
     }
-
 
     private fun openDayView() {
         val schedulesForDay = getSchedulesForDate(LocalDate.now())
@@ -483,42 +546,48 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    // MainActivity의 handleAddButtonClick 메서드를 이것으로 교체
+
     private fun handleAddButtonClick() {
         val title = scheduleEditText.text.toString()
+        Log.d("ADD_BUTTON", "=== 추가 버튼 클릭 ===")
+        Log.d("ADD_BUTTON", "입력된 제목: '$title'")
+        Log.d("ADD_BUTTON", "선택된 날짜: $selectedDate")
+
         if (title.isNotBlank()) {
+            Log.d("ADD_BUTTON", "제목이 있음 - API 요청 생성")
+
+            // ✅ 시간 차이를 더 크게 설정하여 검증 통과
             val request = ScheduleRequest(
                 title = title,
                 memo = "",
-                location = "",
                 category = "",
+                location = "",
                 scheduledDate = selectedDate.toString(),
                 startDate = selectedDate.toString(),
                 endDate = selectedDate.toString(),
-                startTime = LocalTime.of(9, 0).toString(),
-                endTime = LocalTime.of(10, 0).toString(),
-                allDay = false,
+                startTime = "09:00",                     // 시작: 09:00
+                endTime = "10:00",                       // 종료: 12:00 (3시간 차이)
+                allDay = false,                          // ✅ 명시적으로 false
                 isConfirmed = true,
-                color = "#4285F4",
+                color = "blue",
                 alarmOn = true,
                 copiedFromScheduleId = copiedFromScheduleId
             )
+
+            Log.d("ADD_BUTTON", "생성된 요청 객체: $request")
+            Log.d("ADD_BUTTON", "startTime: ${request.startTime}")
+            Log.d("ADD_BUTTON", "endTime: ${request.endTime}")
+            Log.d("ADD_BUTTON", "시간 차이: ${request.startTime} -> ${request.endTime}")
+            Log.d("ADD_BUTTON", "API 호출 시작...")
+
             addSchedule(request)
             scheduleEditText.text.clear()
-        } else {
-            openAddScheduleActivity(selectedDate)
-        }
-    }
 
-    private fun openAddOrListDialog(date: LocalDate) {
-        val dailySchedules = schedules[date]
-        if (dailySchedules.isNullOrEmpty()) {
-            openAddScheduleActivity(date)
+            Log.d("ADD_BUTTON", "입력창 정리 완료")
         } else {
-            ScheduleListDialog(date, dailySchedules.toMutableList(), {
-                updateCalendar()
-            }, { clickedDate ->
-                openAddScheduleActivity(clickedDate)
-            }).show(supportFragmentManager, "ScheduleListDialog")
+            Log.d("ADD_BUTTON", "제목이 비어있음 - AddScheduleActivity 열기")
+            openAddScheduleActivity(selectedDate)
         }
     }
 
@@ -537,7 +606,6 @@ class MainActivity : AppCompatActivity() {
 
         return dayList
     }
-
 
     private fun updateScheduleHint(date: LocalDate) {
         scheduleEditText.hint = date.format(DateTimeFormatter.ofPattern("M월 d일 일정 추가", Locale.KOREA))
@@ -640,10 +708,12 @@ class MainActivity : AppCompatActivity() {
                     // 오른쪽으로 스와이프 -> 이전 달
                     selectedDate = selectedDate.minusMonths(1)
                     updateCalendar()
+                    fetchAllSchedulesForMonth()
                 } else {
                     // 왼쪽으로 스와이프 -> 다음 달
                     selectedDate = selectedDate.plusMonths(1)
                     updateCalendar()
+                    fetchAllSchedulesForMonth()
                 }
                 return true // 이벤트 처리를 완료했음을 알림
             }

@@ -5,23 +5,23 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.button.MaterialButton
-import android.os.Handler
-import android.os.Looper
-import android.view.View
-import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import com.example.mycalendar.model.ApiResponse
+import com.example.mycalendar.model.UserInfoResponse
+import com.example.mycalendar.network.RetrofitClient
+import com.google.android.material.button.MaterialButton
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-class
-MypageActivity : AppCompatActivity() {
+class MypageActivity : AppCompatActivity() {
 
     private lateinit var nameText: TextView
     private lateinit var idText: TextView
     private lateinit var btnChangePw: MaterialButton
     private lateinit var btnLogout: MaterialButton
     private lateinit var btnDeleteAccount: MaterialButton
-
 
     private lateinit var sharedPref: SharedPreferences
 
@@ -37,67 +37,73 @@ MypageActivity : AppCompatActivity() {
         btnLogout = findViewById(R.id.btnLogout)
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount)
 
-        // 상단 아이콘 클릭 시 MainActivity로 이동
-        val userIcon = findViewById<ImageView>(R.id.userIcon)
+        // ✅ 서버에서 이름, 아이디 불러오기
+        val token = sharedPref.getString("accessToken", "") ?: ""
+        RetrofitClient.apiService.getUserInfo("Bearer $token")
+            .enqueue(object : Callback<ApiResponse<UserInfoResponse>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<UserInfoResponse>>,
+                    response: Response<ApiResponse<UserInfoResponse>>
+                ) {
+                    if (response.isSuccessful && response.body()?.data != null) {
+                        val user = response.body()!!.data
+                        nameText.text = user?.name
+                        idText.text = user?.userId
+                    } else {
+                        Toast.makeText(this@MypageActivity, "유저 정보 조회 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
 
-        userIcon.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
+                override fun onFailure(call: Call<ApiResponse<UserInfoResponse>>, t: Throwable) {
+                    Toast.makeText(this@MypageActivity, "서버 오류", Toast.LENGTH_SHORT).show()
+                }
+            })
 
-        // 저장된 이름, 아이디 불러오기
-        nameText.text = sharedPref.getString("name", "이름 없음")
-        idText.text = sharedPref.getString("id", "ID 없음")
-
-        // 비밀번호 변경 화면 이동
+        // ✅ 비밀번호 변경 화면 이동
         btnChangePw.setOnClickListener {
             val intent = Intent(this, ChangePasswordActivity::class.java)
             startActivity(intent)
         }
 
-        // 로그아웃
+        // ✅ 로그아웃
         btnLogout.setOnClickListener {
-            // 자동로그인 해제
-            sharedPref.edit().putBoolean("autoLogin", false).commit()
-
-            // 로그아웃 안내 문구
-            val rootView = findViewById<View>(android.R.id.content)
-            Snackbar.make(rootView, "로그아웃 되었습니다.", Snackbar.LENGTH_SHORT).show()
-
-            // 1~1.5초 후에 LoginActivity로 이동
-            Handler(Looper.getMainLooper()).postDelayed({
-                val intent = Intent(this, LoginActivity::class.java)
-                intent.putExtra("fromLogout", true)
-                startActivity(intent)
-                finish()
-            }, 1200)  // 1.2초 정도 지연
+            sharedPref.edit().clear().apply()
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+            finish()
         }
 
-        // 계정 삭제 (실제로는 서버 연동 필요)
+        // ✅ 계정 삭제
         btnDeleteAccount.setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("계정을 삭제하시겠습니까?")
-                .setMessage("계정 삭제 시 계정 정보 및 일정에 관한 내용은 복구되지 않습니다.")
-                .setNegativeButton("취소") { dialog, _ ->
-                    dialog.dismiss()  // 아무것도 하지 않고 창 닫기
-                }
-                .setPositiveButton("계정 삭제") { _, _ ->
-                    // 모든 사용자 정보 삭제
-                    sharedPref.edit().clear().commit()
+                .setTitle("계정 삭제")
+                .setMessage("정말로 탈퇴하시겠습니까?")
+                .setPositiveButton("삭제") { _, _ ->
+                    RetrofitClient.apiService.deleteAccount("Bearer $token")
+                        .enqueue(object : Callback<ApiResponse<Unit>> {
+                            override fun onResponse(
+                                call: Call<ApiResponse<Unit>>,
+                                response: Response<ApiResponse<Unit>>
+                            ) {
+                                if (response.isSuccessful) {
+                                    sharedPref.edit().clear().apply()
+                                    Toast.makeText(this@MypageActivity, "계정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(this@MypageActivity, LoginActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                                    startActivity(intent)
+                                    finish()
+                                } else {
+                                    Toast.makeText(this@MypageActivity, "삭제 실패", Toast.LENGTH_SHORT).show()
+                                }
+                            }
 
-                    // 안내 메시지 표시
-                    val rootView = findViewById<View>(android.R.id.content)
-                    Snackbar.make(rootView, "계정이 삭제되었습니다.", Snackbar.LENGTH_SHORT).show()
-
-                    // 약간의 지연 후 로그인 화면으로 이동
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        val intent = Intent(this, LoginActivity::class.java)
-                        intent.putExtra("fromLogout", true)
-                        startActivity(intent)
-                        finish()
-                    }, 1200)
+                            override fun onFailure(call: Call<ApiResponse<Unit>>, t: Throwable) {
+                                Toast.makeText(this@MypageActivity, "서버 오류", Toast.LENGTH_SHORT).show()
+                            }
+                        })
                 }
+                .setNegativeButton("취소", null)
                 .show()
         }
     }

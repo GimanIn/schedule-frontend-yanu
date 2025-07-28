@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     // ✅ 백엔드 서버 주소 수정 (Spring Boot 0.0.0.0:8080)
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    private const val BASE_URL = "http://10.0.2.2:8081/"
 
     private var context: Context? = null
     private var prefs: SharedPreferences? = null
