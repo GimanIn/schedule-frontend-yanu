@@ -144,6 +144,10 @@
         app:menu="@menu/drawer_menu"
         app:itemIconTint="@color/black"
         app:itemTextColor="@color/black"
-        android:background="@color/white"/>
+        android:background="@color/white" >
+
+        <include layout="@layout/nav_drawer_footer" />
+
+    </com.google.android.material.navigation.NavigationView>
 
 </androidx.drawerlayout.widget.DrawerLayout>

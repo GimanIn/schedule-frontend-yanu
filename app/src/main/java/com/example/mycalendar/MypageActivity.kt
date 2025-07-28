@@ -12,9 +12,15 @@ import android.os.Looper
 import android.view.View
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AlertDialog
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.LayoutInflater
+import android.widget.Button
+import android.widget.Toast
+import android.view.Gravity
 
-class
-MypageActivity : AppCompatActivity() {
+class MypageActivity : AppCompatActivity() {
 
     private lateinit var nameText: TextView
     private lateinit var idText: TextView
@@ -37,10 +43,10 @@ MypageActivity : AppCompatActivity() {
         btnLogout = findViewById(R.id.btnLogout)
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount)
 
-        // 상단 아이콘 클릭 시 MainActivity로 이동
-        val userIcon = findViewById<ImageView>(R.id.userIcon)
+        // 뒤로가기 클릭 시 MainActivity로 이동
+        val btnBack = findViewById<ImageView>(R.id.btnBack)
 
-        userIcon.setOnClickListener {
+        btnBack.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(intent)
@@ -75,30 +81,40 @@ MypageActivity : AppCompatActivity() {
         }
 
         // 계정 삭제 (실제로는 서버 연동 필요)
-        btnDeleteAccount.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("계정을 삭제하시겠습니까?")
-                .setMessage("계정 삭제 시 계정 정보 및 일정에 관한 내용은 복구되지 않습니다.")
-                .setNegativeButton("취소") { dialog, _ ->
-                    dialog.dismiss()  // 아무것도 하지 않고 창 닫기
-                }
-                .setPositiveButton("계정 삭제") { _, _ ->
-                    // 모든 사용자 정보 삭제
-                    sharedPref.edit().clear().commit()
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_delete_account, null)
+        val dialog = Dialog(this)
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setCancelable(false)
 
-                    // 안내 메시지 표시
-                    val rootView = findViewById<View>(android.R.id.content)
-                    Snackbar.make(rootView, "계정이 삭제되었습니다.", Snackbar.LENGTH_SHORT).show()
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        val btnDelete = dialogView.findViewById<Button>(R.id.btnDelete)
 
-                    // 약간의 지연 후 로그인 화면으로 이동
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        val intent = Intent(this, LoginActivity::class.java)
-                        intent.putExtra("fromLogout", true)
-                        startActivity(intent)
-                        finish()
-                    }, 1200)
-                }
-                .show()
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
         }
+
+        btnDelete.setOnClickListener {
+            // 사용자 정보 삭제
+            sharedPref.edit().clear().commit()
+
+            // 스낵바 표시
+            val rootView = findViewById<View>(android.R.id.content)
+            val toast = Toast.makeText(this, "계정이 삭제되었습니다.", Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.CENTER, 0, 0)
+            toast.show()
+
+            dialog.dismiss()
+
+            // 로그인 화면으로 이동
+            Handler(Looper.getMainLooper()).postDelayed({
+                val intent = Intent(this, LoginActivity::class.java)
+                intent.putExtra("fromLogout", true)
+                startActivity(intent)
+                finish()
+            }, 1200)
+        }
+
+        dialog.show()
     }
 }

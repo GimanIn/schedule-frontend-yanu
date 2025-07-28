@@ -95,10 +95,6 @@ class LoginActivity : AppCompatActivity() {
         findInfoText.setOnClickListener {
             Toast.makeText(this, "아이디/비밀번호 찾기 기능은 준비 중입니다.", Toast.LENGTH_SHORT).show()
         }
-
-        backButton.setOnClickListener {
-            finish()
-        }
     }
 
     // ✅ FIX: SharedPreferences 데이터 타입 충돌 해결
