@@ -76,8 +76,8 @@ interface ApiService {
 
     // 🤖 AI 요약 ------------------------------------
 
-    @GET("/api/ai/summary")
-    fun getAiSummary(@Query("date") date: String): Call<ApiResponse<AiSummaryResponse>> // AI 요약
+    @POST("/api/ai/summary")
+    fun getAiSummary(@Query("date") date: String): Call<AiSummaryResponse> // AI 요약
 
     // 🔄 AccessToken 갱신 (RefreshToken 기반)
     @POST("/api/auth/refresh-token")

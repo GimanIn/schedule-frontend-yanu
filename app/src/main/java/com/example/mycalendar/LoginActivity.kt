@@ -62,7 +62,14 @@ class LoginActivity : AppCompatActivity() {
         signupButton = findViewById(R.id.btn_signup)
         findInfoText = findViewById(R.id.txt_find_account)
         autoLoginCheckbox = findViewById(R.id.checkbox_autologin)
-        backButton = findViewById(R.id.btn_back)
+
+        // ✅ 방법 1: backButton을 안전하게 처리 (추천)
+        backButton = findViewById<ImageButton>(R.id.btn_back)
+            ?: run {
+                Log.w("LoginActivity", "btn_back을 찾을 수 없습니다. 레이아웃을 확인하세요.")
+                // 더미 ImageButton 생성하거나 null 허용 타입으로 변경
+                ImageButton(this).apply { visibility = android.view.View.GONE }
+            }
     }
 
     private fun setupClickListeners() {

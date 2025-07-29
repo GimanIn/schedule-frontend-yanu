@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
@@ -31,6 +32,7 @@ import com.example.mycalendar.model.LoginResponse
 import com.example.mycalendar.model.Schedule
 import com.example.mycalendar.model.ScheduleRequest
 import com.example.mycalendar.model.ScheduleResponse
+import com.example.mycalendar.model.*
 import com.example.mycalendar.network.RetrofitClient
 import com.google.android.material.navigation.NavigationView
 import retrofit2.Call
@@ -38,6 +40,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.time.LocalDate
 import java.time.LocalTime
+
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -57,10 +60,15 @@ class MainActivity : AppCompatActivity() {
     private var selectedDate: LocalDate = LocalDate.now()
     private var copiedFromScheduleId: Long? = null
 
-    // ✅ [추가] 알림 권한 요청 결과를 처리하는 런처
+    // ✅ [첫 번째 파일에서 가져온 정교한 권한 관리]
+    private var isContentLoaded = false
+    private var guidanceDialog: AlertDialog? = null
+
+    // ✅ [두 번째 파일의 간단한 권한 처리 + 첫 번째의 정교한 관리 결합]
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
+        // 권한 요청 결과 처리는 onResume()에서 일괄 처리
         if (isGranted) {
             Toast.makeText(this, "알림 권한이 허용되었습니다.", Toast.LENGTH_SHORT).show()
         } else {
@@ -74,7 +82,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             val newSchedule = result.data?.getSerializableExtra("newSchedule") as? Schedule
             if (newSchedule != null) {
-                addScheduleToMap(newSchedule) // ✅ UI에 바로 반영
+                addScheduleToMap(newSchedule)
             } else {
                 fetchAllSchedulesForMonth()
             }
@@ -94,15 +102,21 @@ class MainActivity : AppCompatActivity() {
         calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
         scheduleEditText = findViewById(R.id.scheduleEditText)
 
-        val addButton: ImageButton = findViewById(R.id.addButton)
-        val searchButton: ImageView = findViewById(R.id.searchButton)
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
 
-        checkLoginAndRefreshTokenIfNeeded {
-            setupCalendar()
-            fetchAllSchedulesForMonth()
-        }
+        // ✅ [첫 번째 파일의 모듈화된 구조 적용]
+        initializeUI(drawerLayout)
+        askNotificationPermission()
+    }
 
+    // ✅ [첫 번째 파일의 onResume 권한 체크 적용]
+    override fun onResume() {
+        super.onResume()
+        checkPermissionAndLoadContent()
+    }
+
+    // ✅ [첫 번째 파일의 모듈화된 UI 초기화]
+    private fun initializeUI(drawerLayout: DrawerLayout) {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
@@ -124,25 +138,19 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_day -> {
-                    val selectedDate = LocalDate.now() // 또는 선택된 날짜
-
-                    val schedulesForDay = getSchedulesForDate(selectedDate) // 해당 날짜의 일정 리스트
-
+                    val selectedDate = LocalDate.now()
+                    val schedulesForDay = getSchedulesForDate(selectedDate)
                     val dialog = ScheduleListDialog(
                         date = selectedDate,
-                        dailySchedules = schedulesForDay.toMutableList(), // MutableList<Schedule>
-                        onDataChanged = {
-                            // 일정 수정되었을 때 처리
-                        },
+                        dailySchedules = schedulesForDay.toMutableList(),
+                        onDataChanged = { /* 일정 수정되었을 때 처리 */ },
                         onAddNewSchedule = { date ->
-                            // 일정 추가 화면 이동 등
                             val intent = Intent(this, AddScheduleActivity::class.java)
                             intent.putExtra("selectedDate", date.toString())
                             startActivity(intent)
                         }
                     )
                     dialog.show(supportFragmentManager, "ScheduleListDialog")
-
                     true
                 }
                 R.id.nav_mypage -> {
@@ -153,15 +161,8 @@ class MainActivity : AppCompatActivity() {
             }.also { drawerLayout.closeDrawer(GravityCompat.START) }
         }
 
-        searchButton.setOnClickListener {
-            openSearchActivity()
-        }
-        addButton.setOnClickListener { handleAddButtonClick() }
-
         // ✅ 사이드 메뉴 하단 텍스트뷰 클릭 처리 (이용약관 / 개인정보)
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
-
-        // nav_drawer_footer.xml이 NavigationView 내부에 include돼 있다면 아래처럼 접근
         val textTerms = navigationView.findViewById<TextView>(R.id.textTerms)
         val textPrivacy = navigationView.findViewById<TextView>(R.id.textPrivacy)
 
@@ -175,7 +176,10 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
         }
 
-        // ✅ AI 요약 버튼 - 백엔드 연동
+        findViewById<ImageView>(R.id.searchButton).setOnClickListener { openSearchActivity() }
+        findViewById<ImageButton>(R.id.addButton).setOnClickListener { handleAddButtonClick() }
+
+        // ✅ [두 번째 파일의 실제 AI 요약 기능 유지]
         findViewById<ImageButton>(R.id.aiButton)?.setOnClickListener {
             Log.d("AI_SUMMARY", "AI 요약 버튼 클릭됨")
 
@@ -187,8 +191,7 @@ class MainActivity : AppCompatActivity() {
             loadingDialog.show()
             val today = LocalDate.now().toString()
             RetrofitClient.apiService.getAiSummary(today)
-                .enqueue(object : Callback<AiSummaryResponse> {
-                    // ✅ 메서드 시그니처 수정: Call<AiSummaryResponse>, Response<AiSummaryResponse>
+                .enqueue(object : Callback<AiSummaryResponse>  {
                     override fun onResponse(
                         call: Call<AiSummaryResponse>,
                         response: Response<AiSummaryResponse>
@@ -202,10 +205,12 @@ class MainActivity : AppCompatActivity() {
                             val summaryResponse = response.body()
                             Log.d("AI_SUMMARY", "응답 데이터: $summaryResponse")
 
-                            if (summaryResponse != null && !summaryResponse.summary.isNullOrBlank()) {
+                            val summaryText = summaryResponse?.summary
+
+                            if (!summaryText.isNullOrBlank()) {
                                 Log.d("AI_SUMMARY", "✅ AI 요약 성공!")
-                                Log.d("AI_SUMMARY", "요약 내용 길이: ${summaryResponse.summary.length}")
-                                showAiSummaryDialog(summaryResponse.summary)
+                                Log.d("AI_SUMMARY", "요약 내용 길이: ${summaryText.length}")
+                                showAiSummaryDialog(summaryText)
                             } else {
                                 Log.e("AI_SUMMARY", "❌ 요약 내용이 비어있음")
                                 Toast.makeText(this@MainActivity, "AI 요약 내용이 비어있습니다.", Toast.LENGTH_SHORT).show()
@@ -224,7 +229,6 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    // ✅ 메서드 시그니처 수정: Call<AiSummaryResponse>
                     override fun onFailure(call: Call<AiSummaryResponse>, t: Throwable) {
                         loadingDialog.dismiss()
                         Log.e("AI_SUMMARY", "❌ 네트워크 오류", t)
@@ -239,34 +243,94 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         }
+        // ✅ 클래스 멤버 함수로 올바르게 정의
+
 
         gestureDetector = GestureDetector(this, SwipeGestureListener())
-
         calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
                 gestureDetector.onTouchEvent(e)
                 return false
             }
-
             override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
-
-        // ✅ [추가] onCreate가 끝날 때 알림 권한을 요청합니다.
-        askNotificationPermission()
     }
 
-    // ✅ AI 요약 다이얼로그를 표시하는 메서드
+    // ✅ [첫 번째 파일의 정교한 권한 체크 로직]
+    private fun checkPermissionAndLoadContent() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                // 권한이 허용된 경우
+                guidanceDialog?.dismiss()
+                if (!isContentLoaded) {
+                    loadMainContent()
+                }
+            } else {
+                // 권한이 거부된 경우 - 두 번째 파일의 유연한 접근 방식 적용
+                if (!isContentLoaded) {
+                    // ✅ 권한이 없어도 앱은 사용할 수 있도록 함 (두 번째 파일의 장점)
+                    loadMainContent()
+                    // 단, 권한 안내는 표시
+                    showPermissionGuidanceDialog()
+                }
+            }
+        } else {
+            // 안드로이드 13 미만은 설치 시 자동 권한 부여
+            if (!isContentLoaded) {
+                loadMainContent()
+            }
+        }
+    }
+
+    // ✅ [첫 번째 파일의 콘텐츠 로딩 분리]
+    private fun loadMainContent() {
+        checkLoginAndRefreshTokenIfNeeded {
+            setupCalendar()
+            fetchAllSchedulesForMonth()
+            isContentLoaded = true
+        }
+    }
+
+    // ✅ [첫 번째 파일의 권한 안내 다이얼로그 - 수정: 강제성 완화]
+    private fun showPermissionGuidanceDialog() {
+        if (guidanceDialog != null && guidanceDialog!!.isShowing) {
+            return
+        }
+
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("알림 권한 권장")
+        builder.setMessage("더 나은 사용 경험을 위해 알림 권한을 허용해주세요. 일정 알림을 받을 수 있습니다.")
+        builder.setPositiveButton("설정으로 이동") { _, _ ->
+            goToAppNotificationSettings()
+        }
+        // ✅ 강제성 완화: "나중에" 옵션 추가
+        builder.setNegativeButton("나중에") { _, _ ->
+            // 다이얼로그 닫기만 함
+        }
+        builder.setCancelable(true) // 뒤로가기로도 닫을 수 있게 함
+
+        guidanceDialog = builder.create()
+        guidanceDialog?.show()
+    }
+
+    // ✅ [첫 번째 파일의 설정 화면 이동]
+    private fun goToAppNotificationSettings() {
+        val intent = Intent().apply {
+            action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
+    }
+
+    // ✅ [두 번째 파일의 실제 AI 요약 다이얼로그]
     private fun showAiSummaryDialog(summaryText: String) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_ai_summary, null)
         val summaryDateText = dialogView.findViewById<TextView>(R.id.summaryDateText)
         val summaryContentText = dialogView.findViewById<TextView>(R.id.summaryContentText)
 
-        // 현재 날짜를 표시
         val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREA)
         summaryDateText.text = "오늘 ${LocalDate.now().format(formatter)}"
-
-        // 백엔드에서 받은 AI 요약 내용을 표시
         summaryContentText.text = summaryText
 
         AlertDialog.Builder(this)
@@ -275,18 +339,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ✅ [추가] 알림 권한을 요청하는 함수
     private fun askNotificationPermission() {
-        // 안드로이드 13 (Tiramisu, API 33) 이상인지 확인
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // 권한이 이미 부여되었는지 확인
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                // 이미 권한이 있으면 아무것도 하지 않음
-                Log.d("Permission", "알림 권한이 이미 허용되어 있습니다.")
-            } else {
-                // 권한이 없다면, 사용자에게 권한 요청 대화상자를 띄웁니다.
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -327,7 +382,6 @@ class MainActivity : AppCompatActivity() {
             })
     }
 
-    // ✅ 일정 맵에 추가
     fun addScheduleToMap(schedule: Schedule) {
         var current = schedule.startDate
         val end = schedule.endDate
@@ -358,7 +412,7 @@ class MainActivity : AppCompatActivity() {
                     val list = ScheduleMapper.toSchedule(response.body()?.data ?: emptyList())
                     schedules.clear()
                     list.forEach { schedule ->
-                        addScheduleToMap(schedule)  // ✅ startDate ~ endDate 사이 날짜에 모두 저장
+                        addScheduleToMap(schedule)
                     }
                     updateCalendar()
                 } else {
@@ -431,18 +485,16 @@ class MainActivity : AppCompatActivity() {
         calendarRecyclerView.layoutManager = GridLayoutManager(this, 7)
         calendarRecyclerView.adapter = calendarAdapter
 
-        // 1. 우리가 만든 제스처 리스너를 사용하여 제스처 감지기를 생성합니다.
-        var gestureDetector: GestureDetector
-        gestureDetector = GestureDetector(this, SwipeGestureListener())
+        // ✅ 오늘 날짜 위치로 스크롤 이동
+        val today = LocalDate.now()
+        val todayIndex = daysInMonth.indexOf(today)
+        if (todayIndex != -1) {
+            calendarRecyclerView.scrollToPosition(todayIndex)
+        }
 
-        // 2. 캘린더(RecyclerView)의 터치 이벤트를 제스처 감지기가 처리하도록 설정합니다.
-        // 이 방법은 클릭과 스와이프를 모두 온전히 지원합니다.
-
-        // --- 여기까지 추가 ---
-        updateCalendar() // 앱 실행 시 첫 화면 로드
+        updateCalendar()
     }
 
-    // --- 👇 2. AddScheduleActivity를 '수정 모드'로 여는 함수를 추가합니다. ---
     fun openEditScheduleActivity(schedule: Schedule, isCopy: Boolean) {
         val intent = Intent(this, AddScheduleActivity::class.java).apply {
             putExtra("scheduleToEdit", schedule)
@@ -452,6 +504,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCalendar() {
+        // ✅ [첫 번째 파일의 방어 코드 적용]
+        if (!isContentLoaded) return
+
         toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
         calendarAdapter.dayList = generateDaysInMonth(YearMonth.from(selectedDate))
         calendarAdapter.selectedDate = selectedDate
@@ -477,14 +532,12 @@ class MainActivity : AppCompatActivity() {
         addScheduleLauncher.launch(intent)
     }
 
-    // --- 👇 1. 수정 전용 결과 처리기를 새로 추가합니다. ---
     val editScheduleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         Log.d("EDIT", "=== 결과: ${result.resultCode} ===")
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
-            // 1. "updatedSchedule" 키로 수정된 일정이 있는지 먼저 확인
             val updatedSchedule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 data?.getSerializableExtra("updatedSchedule", Schedule::class.java)
             } else {
@@ -494,11 +547,9 @@ class MainActivity : AppCompatActivity() {
 
             if (updatedSchedule != null) {
                 Log.d("EDIT", "수정됨: ${updatedSchedule.title}")
-                // 수정된 일정이 있다면 -> 기존 것 삭제 후 새로 추가
                 removeSchedule(updatedSchedule)
                 addScheduleToMap(updatedSchedule)
             } else {
-                // 2. "updatedSchedule"가 없다면, "newSchedule" 키로 복사된 새 일정이 있는지 확인
                 val copiedSchedule =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         data?.getSerializableExtra("newSchedule", Schedule::class.java)
@@ -508,7 +559,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 if (copiedSchedule != null) {
                     Log.d("EDIT", "복사됨: ${copiedSchedule.title}")
-                    // 복사된 새 일정이 있다면 -> 그냥 추가
                     addSchedule(copiedSchedule)
                 }
             }
@@ -522,7 +572,6 @@ class MainActivity : AppCompatActivity() {
             val scheduleList = entry.value
 
             scheduleList.removeAll {
-                // ID가 있으면 ID 기준, 없으면 날짜/시간/제목 비교
                 (scheduleToRemove.id != null && it.id == scheduleToRemove.id) ||
                         (scheduleToRemove.id == null &&
                                 it.title == scheduleToRemove.title &&
@@ -555,10 +604,8 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    // MainActivity의 handleAddButtonClick 메서드를 이것으로 교체
-
     private fun handleAddButtonClick() {
-        val title = scheduleEditText.text.toString()
+        val title = scheduleEditText.text.toString().trim()  // trim() 추가
         Log.d("ADD_BUTTON", "=== 추가 버튼 클릭 ===")
         Log.d("ADD_BUTTON", "입력된 제목: '$title'")
         Log.d("ADD_BUTTON", "선택된 날짜: $selectedDate")
@@ -566,7 +613,11 @@ class MainActivity : AppCompatActivity() {
         if (title.isNotBlank()) {
             Log.d("ADD_BUTTON", "제목이 있음 - API 요청 생성")
 
-            // ✅ 시간 차이를 더 크게 설정하여 검증 통과
+            // ✅ 현재 시간 기반으로 기본 시간 설정 (선택사항)
+            val currentTime = LocalTime.now()
+            val startTime = currentTime.withMinute(0).format(DateTimeFormatter.ofPattern("HH:mm"))
+            val endTime = currentTime.plusHours(1).withMinute(0).format(DateTimeFormatter.ofPattern("HH:mm"))
+
             val request = ScheduleRequest(
                 title = title,
                 memo = "",
@@ -575,9 +626,9 @@ class MainActivity : AppCompatActivity() {
                 scheduledDate = selectedDate.toString(),
                 startDate = selectedDate.toString(),
                 endDate = selectedDate.toString(),
-                startTime = "09:00",                     // 시작: 09:00
-                endTime = "10:00",                       // 종료: 12:00 (3시간 차이)
-                allDay = false,                          // ✅ 명시적으로 false
+                startTime = startTime,  // 또는 그냥 "09:00" 유지
+                endTime = endTime,      // 또는 그냥 "12:00" 유지
+                allDay = false,
                 isConfirmed = true,
                 color = "blue",
                 alarmOn = true,
@@ -585,14 +636,10 @@ class MainActivity : AppCompatActivity() {
             )
 
             Log.d("ADD_BUTTON", "생성된 요청 객체: $request")
-            Log.d("ADD_BUTTON", "startTime: ${request.startTime}")
-            Log.d("ADD_BUTTON", "endTime: ${request.endTime}")
-            Log.d("ADD_BUTTON", "시간 차이: ${request.startTime} -> ${request.endTime}")
-            Log.d("ADD_BUTTON", "API 호출 시작...")
+            Log.d("ADD_BUTTON", "시간 설정: $startTime ~ $endTime")  // 시간 로깅 추가
 
             addSchedule(request)
             scheduleEditText.text.clear()
-
             Log.d("ADD_BUTTON", "입력창 정리 완료")
         } else {
             Log.d("ADD_BUTTON", "제목이 비어있음 - AddScheduleActivity 열기")
@@ -675,24 +722,20 @@ class MainActivity : AppCompatActivity() {
             velocityX: Float,
             velocityY: Float
         ): Boolean {
-            // e1이 null이면 시작점을 알 수 없으므로 무시
             if (e1 == null) return false
 
             val diffX = e2.x - e1.x
-            // 스와이프 방향과 속도를 감지
             if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                 if (diffX > 0) {
-                    // 오른쪽으로 스와이프 -> 이전 달
                     selectedDate = selectedDate.minusMonths(1)
                     updateCalendar()
                     fetchAllSchedulesForMonth()
                 } else {
-                    // 왼쪽으로 스와이프 -> 다음 달
                     selectedDate = selectedDate.plusMonths(1)
                     updateCalendar()
                     fetchAllSchedulesForMonth()
                 }
-                return true // 이벤트 처리를 완료했음을 알림
+                return true
             }
             return super.onFling(e1, e2, velocityX, velocityY)
         }
