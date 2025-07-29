@@ -84,4 +84,26 @@ interface ApiService {
     fun refreshAccessToken(
         @Header("Authorization") refreshToken: String
     ): Call<ApiResponse<LoginResponse>> // AccessToken 갱신
+
+
+    // 👤 마이페이지 관련 ------------------------------
+
+    // 1. 유저 정보 조회 (이름 + 아이디)
+    @GET("/api/user/me")
+    fun getUserInfo(
+        @Header("Authorization") token: String
+    ): Call<ApiResponse<UserInfoResponse>>
+
+    // 2. 비밀번호 변경
+    @POST("/api/user/change-password")
+    fun changePassword(
+        @Header("Authorization") token: String,
+        @Body request: ChangePasswordRequest
+    ): Call<ApiResponse<Unit>>
+
+    // 3. 계정 삭제
+    @DELETE("/api/user")
+    fun deleteAccount(
+        @Header("Authorization") token: String
+    ): Call<ApiResponse<Unit>>
 }
