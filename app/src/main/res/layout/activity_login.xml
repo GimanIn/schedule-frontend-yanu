@@ -7,26 +7,16 @@
     android:background="#FFFFFF"
     android:padding="24dp">
 
-    <ImageButton
-        android:id="@+id/btn_back"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/ic_back"
-        android:contentDescription="뒤로 가기"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <!-- 회사 로고 -->
     <ImageView
         android:id="@+id/img_logo"
         android:layout_width="wrap_content"
         android:layout_height="70dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="24dp"
         android:scaleType="fitCenter"
         android:adjustViewBounds="true"
         android:src="@drawable/logo_tic"
-        app:layout_constraintTop_toBottomOf="@id/btn_back"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -35,7 +25,7 @@
         android:id="@+id/txt_welcome"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="55dp"
+        android:layout_marginTop="45dp"
         android:text="Welcome to TIC !"
         android:textColor="#000000"
         android:textSize="42sp"
@@ -142,7 +132,7 @@
         android:text="로그인"
         android:textColor="@android:color/white"
         android:textSize="16sp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="0dp"
         app:cornerRadius="12dp"
         app:backgroundTint="#1C2444"
         app:layout_constraintTop_toBottomOf="@id/checkbox_autologin"

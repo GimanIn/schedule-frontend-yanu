@@ -10,7 +10,11 @@ import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
-import android.widget.*
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -22,10 +26,13 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.databinding.ActivityMainBinding
 import com.example.mycalendar.mapper.ScheduleMapper
-import com.example.mycalendar.model.*
+import com.example.mycalendar.model.ApiResponse
+import com.example.mycalendar.model.LoginResponse
+import com.example.mycalendar.model.Schedule
+import com.example.mycalendar.model.ScheduleRequest
+import com.example.mycalendar.model.ScheduleResponse
 import com.example.mycalendar.network.RetrofitClient
 import com.google.android.material.navigation.NavigationView
-import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -34,6 +41,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -141,21 +149,6 @@ class MainActivity : AppCompatActivity() {
                     startActivity(Intent(this, MypageActivity::class.java))
                     true
                 }
-                R.id.nav_settings -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
-                            != PackageManager.PERMISSION_GRANTED) {
-                            //권한이 없을 경우 → 다이얼로그로 유도
-                            showNotificationDialog()
-                        } else {
-                            // 이미 권한 있음 → 설정 화면으로 이동
-                            goToAppNotificationSettings()
-                        }
-                    } else {
-                        goToAppNotificationSettings()
-                    }
-                    true
-                }
                 else -> false
             }.also { drawerLayout.closeDrawer(GravityCompat.START) }
         }
@@ -164,6 +157,23 @@ class MainActivity : AppCompatActivity() {
             openSearchActivity()
         }
         addButton.setOnClickListener { handleAddButtonClick() }
+
+        // ✅ 사이드 메뉴 하단 텍스트뷰 클릭 처리 (이용약관 / 개인정보)
+        val navigationView = findViewById<NavigationView>(R.id.nav_view)
+
+        // nav_drawer_footer.xml이 NavigationView 내부에 include돼 있다면 아래처럼 접근
+        val textTerms = navigationView.findViewById<TextView>(R.id.textTerms)
+        val textPrivacy = navigationView.findViewById<TextView>(R.id.textPrivacy)
+
+        textTerms.setOnClickListener {
+            startActivity(Intent(this, TermsActivity::class.java))
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
+
+        textPrivacy.setOnClickListener {
+            startActivity(Intent(this, PrivacyActivity::class.java))
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
 
         // ✅ AI 요약 버튼 - 백엔드 연동
         findViewById<ImageButton>(R.id.aiButton)?.setOnClickListener {
@@ -229,7 +239,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         }
-
 
         gestureDetector = GestureDetector(this, SwipeGestureListener())
 
@@ -609,38 +618,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateScheduleHint(date: LocalDate) {
         scheduleEditText.hint = date.format(DateTimeFormatter.ofPattern("M월 d일 일정 추가", Locale.KOREA))
-    }
-
-    private fun handleNotificationSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                showNotificationDialog()
-            } else {
-                goToAppNotificationSettings()
-            }
-        } else {
-            goToAppNotificationSettings()
-        }
-    }
-
-    private fun showNotificationDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("알림 권한 필요")
-            .setMessage("일정 알림을 받으려면 알림 권한이 필요합니다.")
-            .setPositiveButton("설정하기") { _, _ ->
-                goToAppNotificationSettings()
-            }
-            .setNegativeButton("취소", null)
-            .show()
-    }
-
-    private fun goToAppNotificationSettings() {
-        val intent = Intent().apply {
-            action = "android.settings.APP_NOTIFICATION_SETTINGS"
-            putExtra("android.provider.extra.APP_PACKAGE", packageName)
-        }
-        startActivity(intent)
     }
 
     private fun checkLoginAndRefreshTokenIfNeeded(onSuccess: () -> Unit) {

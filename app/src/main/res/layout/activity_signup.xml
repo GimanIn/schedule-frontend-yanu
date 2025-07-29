@@ -301,7 +301,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="(필수) 이용약관"
+                android:text="(필수) 서비스 이용약관"
                 android:textColor="#999CAA" />
 
             <TextView
@@ -325,7 +325,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="(필수) 개인정보 수집 및 이용"
+                android:text="(필수) 개인정보 처리 방침"
                 android:textColor="#999CAA" />
 
             <TextView
@@ -350,4 +350,5 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

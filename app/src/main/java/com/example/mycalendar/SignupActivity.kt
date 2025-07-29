@@ -50,6 +50,19 @@ class SignupActivity : AppCompatActivity() {
         val cbTerms = findViewById<CheckBox>(R.id.cb_terms)
         val cbPrivacy = findViewById<CheckBox>(R.id.cb_privacy)
 
+        val tvTermsDetail = findViewById<TextView>(R.id.tv_view_terms)
+        val tvPrivacyDetail = findViewById<TextView>(R.id.tv_view_privacy)
+
+        tvTermsDetail.setOnClickListener {
+            val intent = Intent(this, TermsActivity::class.java)
+            startActivity(intent)
+        }
+
+        tvPrivacyDetail.setOnClickListener {
+            val intent = Intent(this, PrivacyActivity::class.java)
+            startActivity(intent)
+        }
+
         val backButton = findViewById<ImageButton>(R.id.btn_back)
         backButton.setOnClickListener { finish() }
 
