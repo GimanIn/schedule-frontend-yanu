@@ -593,16 +593,43 @@ class MainActivity : AppCompatActivity() {
 
                         Log.d("DeepLink", "일정 조회 성공: ${schedule.title}")
 
-                        // PreviewFragment 표시
-                        val previewFragment = PreviewFragment.newInstance(schedule)
-                        previewFragment.setOnScheduleCopiedListener(object : OnScheduleCopiedListener {
-                            override fun onScheduleCopied(schedule: Schedule) {
-                                addScheduleToMap(schedule)
-                                Toast.makeText(this@MainActivity, "공유 일정을 복사했습니다.", Toast.LENGTH_SHORT).show()
+                        // ▼▼▼▼▼▼▼▼▼▼ 이 부분을 수정합니다. ▼▼▼▼▼▼▼▼▼▼
+                        // 기존 PreviewFragment 대신 ScheduleImportFragment 사용
+                        val importFragment = ScheduleImportFragment.newInstance(schedule)
+
+                        // '가져오기' 버튼을 눌렀을 때의 동작 설정
+                        importFragment.setOnScheduleImportListener(object : OnScheduleImportListener {
+                            override fun onScheduleImport(importedSchedule: Schedule) {
+
+                                // '하루 종일' 여부를 startTime의 존재 유무로 판단합니다.
+                                val isAllDayEvent = importedSchedule.startTime == null
+
+                                // API 전송용 ScheduleRequest 객체를 생성합니다.
+                                val request = ScheduleRequest(
+                                    title = importedSchedule.title,
+                                    memo = importedSchedule.memo,
+                                    location = importedSchedule.location,
+                                    category = importedSchedule.category,
+                                    scheduledDate = importedSchedule.scheduledDate.toString(),
+                                    startDate = importedSchedule.startDate.toString(),
+                                    endDate = importedSchedule.endDate.toString(),
+                                    // 하루 종일 일정이면 기본값(00:00)을, 아니면 실제 시간을 전송합니다.
+                                    startTime = if (isAllDayEvent) "00:00" else importedSchedule.startTime.toString(),
+                                    endTime = if (isAllDayEvent) "23:59" else importedSchedule.endTime.toString(),
+                                    allDay = isAllDayEvent, // 판단된 '하루 종일' 여부를 설정합니다.
+                                    isConfirmed = true,
+                                    color = String.format("#%06X", 0xFFFFFF and importedSchedule.color),
+                                    alarmOn = importedSchedule.alarmOn,
+                                    copiedFromScheduleId = importedSchedule.id
+                                )
+
+                                // 기존의 일정 생성 API를 호출합니다.
+                                addSchedule(request)
                             }
                         })
 
-                        previewFragment.show(supportFragmentManager, "PreviewFragment")
+                        importFragment.show(supportFragmentManager, "ScheduleImportFragment")
+                        // ▲▲▲▲▲▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲▲▲▲▲▲
                     } else {
                         Log.e("DeepLink", "일정 조회 실패: ${response.code()}")
                         Toast.makeText(this@MainActivity, "일정을 불러오지 못했습니다.", Toast.LENGTH_SHORT).show()
