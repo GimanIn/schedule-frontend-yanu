@@ -90,20 +90,16 @@ interface ApiService {
 
     // 1. 유저 정보 조회 (이름 + 아이디)
     @GET("/api/user/me")
-    fun getUserInfo(
-        @Header("Authorization") token: String
-    ): Call<ApiResponse<UserInfoResponse>>
+    fun getUserInfo(): Call<ApiResponse<UserInfoResponse>> // @Header 제거
 
     // 2. 비밀번호 변경
-    @POST("/api/user/change-password")
+    @PUT("/api/user/change-password")
     fun changePassword(
-        @Header("Authorization") token: String,
-        @Body request: ChangePasswordRequest
+        @Body request: ChangePasswordRequest // @Header 제거
     ): Call<ApiResponse<Unit>>
 
     // 3. 계정 삭제
+    // 3. 계정 삭제 - @Header 제거
     @DELETE("/api/user")
-    fun deleteAccount(
-        @Header("Authorization") token: String
-    ): Call<ApiResponse<Unit>>
+    fun deleteAccount(): Call<ApiResponse<Unit>> // @Header 제거
 }

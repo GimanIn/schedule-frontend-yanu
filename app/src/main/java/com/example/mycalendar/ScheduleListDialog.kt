@@ -12,6 +12,18 @@ import java.time.LocalTime
 import android.graphics.drawable.GradientDrawable
 import java.time.format.DateTimeFormatter
 import android.net.Uri
+// 파일 상단에 추가해야 할 import들
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import com.example.mycalendar.network.RetrofitClient
+import com.example.mycalendar.model.ApiResponse
+import android.widget.PopupWindow
+import androidx.appcompat.app.AlertDialog
+// 파일 상단에 추가
+import android.util.Log
+import com.example.mycalendar.mapper.ScheduleMapper
+import com.example.mycalendar.model.ScheduleResponse
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
@@ -58,6 +70,8 @@ class ScheduleListDialog(
     private lateinit var currentColorView: View
 
     private lateinit var detailAlarmSwitch: SwitchMaterial
+
+
     private val hourHeightDp = 60
 
     private var dataChanged = false
@@ -68,10 +82,60 @@ class ScheduleListDialog(
         setupListView()
         setupDetailViewListeners()
 
+
+
+        activity?.intent?.data?.let { uri ->
+            val scheduleIdParam = uri.getQueryParameter("id")
+            Log.d("DeepLink", "ScheduleListDialog 딥링크 scheduleId: $scheduleIdParam")
+            val scheduleId = scheduleIdParam?.toLongOrNull()
+
+            if (scheduleId != null) {
+                fetchSharedSchedule(scheduleId)
+            }
+        }
+
         // [스와이프] 제스처 감지기 설정 및 뷰에 터치 리스너 연결
         setupGestureDetector()
 
         return view
+    }
+    // ✅ NEW: 딥링크로 들어온 일정 ID로 서버에서 일정 조회
+    private fun fetchSharedSchedule(scheduleId: Long) {
+        RetrofitClient.apiService.getSchedule(scheduleId).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+            override fun onResponse(
+                call: Call<ApiResponse<ScheduleResponse>>,
+                response: Response<ApiResponse<ScheduleResponse>>
+            ) {
+                if (response.isSuccessful && response.body()?.data != null) {
+                    val scheduleResponse = response.body()!!.data!!
+                    val schedule = ScheduleMapper.toSchedule(scheduleResponse)
+
+                    // ✅ 다이얼로그에서 일정 미리보기 표시
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("공유된 일정")
+                        .setMessage("${schedule.title}\n${schedule.startDate} ${schedule.startTime}\n\n이 일정을 복사하시겠습니까?")
+                        .setPositiveButton("복사하기") { _, _ ->
+                            // MainActivity에 일정 추가
+                            (activity as? MainActivity)?.addScheduleToMap(schedule)
+
+                            // 현재 다이얼로그의 리스트에도 추가
+                            dailySchedules.add(schedule)
+                            scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
+
+                            Toast.makeText(context, "공유 일정을 복사했습니다.", Toast.LENGTH_SHORT).show()
+                            onDataChanged()
+                        }
+                        .setNegativeButton("취소", null)
+                        .show()
+                } else {
+                    Toast.makeText(context, "일정을 불러오지 못했습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                Toast.makeText(context, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     // ⭐️ [수정 2] onViewCreated 추가: 뷰가 완전히 생성된 후 특정 상세보기를 바로 띄움

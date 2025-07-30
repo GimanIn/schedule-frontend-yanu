@@ -7,6 +7,8 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.util.Log
+
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -38,7 +40,20 @@ class MypageActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mypage)
 
-        sharedPref = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        intent?.data?.let { deepLink ->
+            Log.d("DeepLink", "LoginActivity에서 받은 딥링크: $deepLink")
+
+            val mainIntent = Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = deepLink
+            }
+            startActivity(mainIntent)
+            finish()
+            return
+        }
+
+        // ✅ LoginActivity와 동일한 SharedPreferences 이름 사용
+        sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
         nameText = findViewById(R.id.nameText)
         idText = findViewById(R.id.idText)
@@ -54,9 +69,9 @@ class MypageActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        // ✅ 서버에서 이름, 아이디 불러오기
-        val token = sharedPref.getString("accessToken", "") ?: ""
-        RetrofitClient.apiService.getUserInfo("Bearer $token")
+        // ✅ LoginActivity와 동일한 토큰 키 사용
+        val token = sharedPref.getString("access_token", "") ?: ""
+        RetrofitClient.apiService.getUserInfo()
             .enqueue(object : Callback<ApiResponse<UserInfoResponse>> {
                 override fun onResponse(
                     call: Call<ApiResponse<UserInfoResponse>>,
@@ -113,7 +128,7 @@ class MypageActivity : AppCompatActivity() {
 
         btnDelete.setOnClickListener {
             // ✅ 서버에 계정 삭제 요청
-            RetrofitClient.apiService.deleteAccount("Bearer $token")
+            RetrofitClient.apiService.deleteAccount()
                 .enqueue(object : Callback<ApiResponse<Unit>> {
                     override fun onResponse(
                         call: Call<ApiResponse<Unit>>,

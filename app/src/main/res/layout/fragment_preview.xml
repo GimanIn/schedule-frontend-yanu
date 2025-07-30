@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/dialog_rounded_background"
+    android:padding="16dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- 상단 타이틀 -->
+        <TextView
+            android:id="@+id/detailDateText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="2025년 7월 25일 금요일 10:00~12:00"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 시간 블럭 -->
+        <FrameLayout
+            android:id="@+id/scheduleBlocksContainer"
+            android:layout_width="0dp"
+            android:layout_height="100dp"
+            android:layout_marginTop="12dp"
+            android:background="#F5F5F5"
+            app:layout_constraintTop_toBottomOf="@id/detailDateText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 색상 & 알림 -->
+        <LinearLayout
+            android:id="@+id/infoLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            app:layout_constraintTop_toBottomOf="@id/scheduleBlocksContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="구분 색상" />
+                <View
+                    android:id="@+id/currentColorView"
+                    style="@style/ColorPickerCircle.Small"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="알림" />
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/detailAlarmSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true" />
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- 메모 -->
+        <EditText
+            android:id="@+id/detailMemoEdit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edit_text_background"
+            android:hint="메모 입력"
+            android:minLines="4"
+            android:padding="8dp"
+            android:textSize="15sp"
+            android:gravity="top"
+            app:layout_constraintTop_toBottomOf="@id/infoLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 버튼 -->
+        <Button
+            android:id="@+id/copyButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="24dp"
+            android:text="가져오기"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:backgroundTint="#1C2444"
+            app:layout_constraintTop_toBottomOf="@id/detailMemoEdit"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

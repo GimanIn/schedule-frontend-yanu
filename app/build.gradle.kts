@@ -18,6 +18,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // ❌ 잘못된 buildFeatures 블록 제거 후 아래로 통일
+    buildFeatures {
+        viewBinding = true // ✅ KTS 문법에서는 '=' 사용
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -27,15 +32,14 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
-    }
-    buildFeatures {
-        viewBinding = true // findViewById를 사용하기 위해 viewBinding을 켰습니다.
     }
 }
 
@@ -59,10 +63,6 @@ dependencies {
     // ✅ Google Material Design (UI 요소들)
     implementation("com.google.android.material:material:1.4.0")
 
-
-    // ✅ AppCompat (기본적인 UI 스타일을 위한 라이브러리)
-    implementation("androidx.appcompat:appcompat:1.6.1") // 이 부분 추가
-
     // ✅ ConstraintLayout (레이아웃 구성)
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
@@ -71,13 +71,12 @@ dependencies {
 
     // ✅ PowerMenu (선택적인 메뉴 기능)
     implementation("com.github.skydoves:powermenu:2.2.4")
-    //추가
+
+    // ✅ Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 
     // ✅ Unit 테스트
     testImplementation("junit:junit:4.13.2")
-
-
 
     // ✅ Android 테스트
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

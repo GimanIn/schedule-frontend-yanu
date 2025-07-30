@@ -31,7 +31,7 @@ class ChangePasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_change_password)
 
-        sharedPref = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
         etCurrentPw = findViewById(R.id.etCurrentPw)
         etNewPw = findViewById(R.id.etNewPw)
@@ -55,11 +55,11 @@ class ChangePasswordActivity : AppCompatActivity() {
             } else if (!isValidPassword(newPw)) {
                 Toast.makeText(this, "비밀번호는 영문/숫자/특수문자 중 2종 이상 조합, 8~16자입니다.", Toast.LENGTH_LONG).show()
             } else {
-                val token = sharedPref.getString("accessToken", "") ?: ""
+                val token = sharedPref.getString("access_token", "") ?: ""
                 val request = ChangePasswordRequest(current, newPw)
 
                 // ✅ 서버로 비밀번호 변경 요청
-                RetrofitClient.apiService.changePassword("Bearer $token", request)
+                RetrofitClient.apiService.changePassword(request)
                     .enqueue(object : Callback<ApiResponse<Unit>> {
                         override fun onResponse(
                             call: Call<ApiResponse<Unit>>,

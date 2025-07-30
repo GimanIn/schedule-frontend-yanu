@@ -35,8 +35,11 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="standard">
-            <intent-filter android:autoVerify="true">
+            android:launchMode="singleTop">
+
+
+
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -45,6 +48,7 @@
                     android:host="schedule" />
             </intent-filter>
         </activity>
+
 
         <!-- 앱 실행 진입점 -->
         <activity android:name=".LoginActivity" android:exported="true">

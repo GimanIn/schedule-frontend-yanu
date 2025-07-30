@@ -89,24 +89,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ✅ 딥링크 처리용 변수
+    private var pendingDeepLinkScheduleId: Long? = null
+    private var isDeepLinkProcessed = false  // 딥링크 처리 완료 플래그
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("DeepLink", "onCreate 실행 - URI: ${intent?.data}")
+
+        extractDeepLinkData(intent)
+
+        // ✅ 딥링크 데이터 추출 후 intent.data 정리
+        intent.data = null
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // RetrofitClient 초기화
         RetrofitClient.init(this)
-
         prefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
         toolbar = findViewById(R.id.toolbar)
         calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
         scheduleEditText = findViewById(R.id.scheduleEditText)
 
-        val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
-
-        // ✅ [첫 번째 파일의 모듈화된 구조 적용]
-        initializeUI(drawerLayout)
+        initializeUI()
         askNotificationPermission()
+    }
+
+    // ✅ 딥링크 데이터 추출
+    private fun extractDeepLinkData(intent: Intent) {
+        try {
+            val uri = intent.data
+            if (uri?.scheme == "mycalendar") {
+                val scheduleIdStr = uri.getQueryParameter("id")
+                val scheduleId = scheduleIdStr?.toLongOrNull()
+
+                if (scheduleId != null && scheduleId > 0) {
+                    pendingDeepLinkScheduleId = scheduleId
+                    Log.d("DeepLink", "딥링크 scheduleId 저장됨: $scheduleId")
+                } else {
+                    Log.w("DeepLink", "잘못된 scheduleId: $scheduleIdStr")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DeepLink", "딥링크 파싱 에러", e)
+        }
     }
 
     // ✅ [첫 번째 파일의 onResume 권한 체크 적용]
@@ -115,13 +141,17 @@ class MainActivity : AppCompatActivity() {
         checkPermissionAndLoadContent()
     }
 
-    // ✅ [첫 번째 파일의 모듈화된 UI 초기화]
-    private fun initializeUI(drawerLayout: DrawerLayout) {
+    // ✅ UI 초기화 (파라미터 제거)
+    private fun initializeUI() {
+        val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
+
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
         val toggle = androidx.appcompat.app.ActionBarDrawerToggle(
-            this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close
+            this, drawerLayout, toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
         )
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
@@ -243,8 +273,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         }
-        // ✅ 클래스 멤버 함수로 올바르게 정의
-
 
         gestureDetector = GestureDetector(this, SwipeGestureListener())
         calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
@@ -289,6 +317,32 @@ class MainActivity : AppCompatActivity() {
             setupCalendar()
             fetchAllSchedulesForMonth()
             isContentLoaded = true
+
+            // 모든 초기화 완료 후 딥링크 처리
+            processDeepLinkIfNeeded()
+        }
+    }
+
+    // ✅ 딥링크 처리 (단일 진입점) - 중복 처리 완전 방지
+    private fun processDeepLinkIfNeeded() {
+        val scheduleId = pendingDeepLinkScheduleId
+        if (scheduleId != null && !isDeepLinkProcessed) {
+            Log.d("DeepLink", "딥링크 처리 시작: $scheduleId")
+
+            // ✅ 즉시 플래그 설정 및 null로 설정해서 중복 처리 방지
+            isDeepLinkProcessed = true
+            pendingDeepLinkScheduleId = null
+
+            val accessToken = prefs.getString(LoginActivity.KEY_ACCESS_TOKEN, null)
+            if (accessToken.isNullOrEmpty()) {
+                Log.d("DeepLink", "로그인 필요 - LoginActivity로 이동")
+                val loginIntent = Intent(this, LoginActivity::class.java)
+                loginIntent.putExtra("redirect_schedule_id", scheduleId)
+                startActivity(loginIntent)
+            } else {
+                Log.d("DeepLink", "딥링크 일정 불러오기: $scheduleId")
+                fetchSharedSchedule(scheduleId)
+            }
         }
     }
 
@@ -514,16 +568,70 @@ class MainActivity : AppCompatActivity() {
         updateScheduleHint(selectedDate)
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleIntent(intent)
-        updateCalendar()
+    // ✅ 딥링크로 들어온 일정 ID로 서버에서 일정 조회
+    private fun fetchSharedSchedule(scheduleId: Long) {
+        Log.d("DeepLink", "fetchSharedSchedule 시작: $scheduleId")
+
+        RetrofitClient.apiService.getSchedule(scheduleId)
+            .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<ScheduleResponse>>,
+                    response: Response<ApiResponse<ScheduleResponse>>
+                ) {
+                    Log.d("DeepLink", "API 응답: ${response.isSuccessful}")
+
+                    if (response.isSuccessful && response.body()?.data != null) {
+                        val scheduleResponse = response.body()!!.data!!
+                        val schedule = ScheduleMapper.toSchedule(scheduleResponse)
+
+                        Log.d("DeepLink", "일정 조회 성공: ${schedule.title}")
+
+                        // PreviewFragment 표시
+                        val previewFragment = PreviewFragment.newInstance(schedule)
+                        previewFragment.setOnScheduleCopiedListener(object : OnScheduleCopiedListener {
+                            override fun onScheduleCopied(schedule: Schedule) {
+                                addScheduleToMap(schedule)
+                                Toast.makeText(this@MainActivity, "공유 일정을 복사했습니다.", Toast.LENGTH_SHORT).show()
+                            }
+                        })
+
+                        previewFragment.show(supportFragmentManager, "PreviewFragment")
+                    } else {
+                        Log.e("DeepLink", "일정 조회 실패: ${response.code()}")
+                        Toast.makeText(this@MainActivity, "일정을 불러오지 못했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                    Log.e("DeepLink", "네트워크 오류", t)
+                    Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
-    private fun handleIntent(intent: Intent) {
-        val y = intent.getIntExtra("targetYear", LocalDate.now().year)
-        val m = intent.getIntExtra("targetMonth", LocalDate.now().monthValue)
-        selectedDate = LocalDate.of(y, m, 1)
+    // ✅ onNewIntent 간소화 - intent.data 정리 추가
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d("DeepLink", "onNewIntent 실행 - URI: ${intent.data}")
+
+        // 새로운 인텐트 설정
+        setIntent(intent)
+
+        // ✅ 새로운 딥링크면 플래그 리셋
+        if (intent.data != null) {
+            isDeepLinkProcessed = false
+        }
+
+        // 딥링크 데이터 추출
+        extractDeepLinkData(intent)
+
+        // ✅ 딥링크 처리 후 intent.data 정리 (중복 방지)
+        intent.data = null
+
+        // 이미 로드된 상태라면 바로 처리
+        if (isContentLoaded) {
+            processDeepLinkIfNeeded()
+        }
     }
 
     private fun openAddScheduleActivity(date: LocalDate) {
@@ -532,12 +640,15 @@ class MainActivity : AppCompatActivity() {
         addScheduleLauncher.launch(intent)
     }
 
+    // ✅ 3. Deprecated getSerializableExtra 수정
     val editScheduleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         Log.d("EDIT", "=== 결과: ${result.resultCode} ===")
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
+
+            // ✅ API 레벨에 따른 안전한 처리
             val updatedSchedule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 data?.getSerializableExtra("updatedSchedule", Schedule::class.java)
             } else {
@@ -550,13 +661,12 @@ class MainActivity : AppCompatActivity() {
                 removeSchedule(updatedSchedule)
                 addScheduleToMap(updatedSchedule)
             } else {
-                val copiedSchedule =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        data?.getSerializableExtra("newSchedule", Schedule::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        data?.getSerializableExtra("newSchedule") as? Schedule
-                    }
+                val copiedSchedule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    data?.getSerializableExtra("newSchedule", Schedule::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    data?.getSerializableExtra("newSchedule") as? Schedule
+                }
                 if (copiedSchedule != null) {
                     Log.d("EDIT", "복사됨: ${copiedSchedule.title}")
                     addSchedule(copiedSchedule)
@@ -739,5 +849,10 @@ class MainActivity : AppCompatActivity() {
             }
             return super.onFling(e1, e2, velocityX, velocityY)
         }
+    }
+
+    // ✅ 딥링크 관련 인터페이스
+    interface OnScheduleCopiedListener {
+        fun onScheduleCopied(schedule: Schedule)
     }
 }

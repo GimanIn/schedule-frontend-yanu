@@ -40,6 +40,30 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+        intent?.data?.let { deepLink ->
+            Log.d("DeepLink", "LoginActivity에서 받은 딥링크: $deepLink")
+
+            prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            val accessToken = prefs.getString(KEY_ACCESS_TOKEN, null)
+            val autoLogin = prefs.getBoolean(KEY_AUTO_LOGIN, false)
+
+            // 로그인 상태일 때만 MainActivity로 이동
+            if (!accessToken.isNullOrEmpty() && autoLogin) {
+                val mainIntent = Intent(this, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    data = deepLink
+                }
+                startActivity(mainIntent)
+                finish()
+                return
+            } else {
+                // 로그인 안 된 상태면 딥링크 정보는 저장만 하고 로그인 화면 유지
+                Log.d("DeepLink", "로그인 필요. 딥링크를 로그인 후 처리해야 함.")
+            }
+        }
+
+
+
         // RetrofitClient 초기화
         RetrofitClient.init(this)
 
