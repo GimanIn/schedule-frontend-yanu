@@ -186,9 +186,9 @@ class AddScheduleActivity : AppCompatActivity() {
         // ⭐️ [최종 수정] Schedule.java 설계도에 맞춰 날짜와 시간을 분리해서 Request 객체를 만듭니다.
         val request = ScheduleRequest(
             title = title,
-            memo = memoEditText.text.toString().trim().ifBlank { null },
+            memo = memoEditText.text.toString().trim().ifBlank { "기본" },
             location = locationEditText.text.toString().trim().ifBlank { null },
-            category = categoryEditText.text.toString().trim().ifBlank { null },
+            category = categoryEditText.text.toString().trim().ifBlank { "기본" },
             // ✅ [수정] .toString() 대신 만들어둔 dateFormatter를 사용합니다.
             scheduledDate = finalStartDateTime.toLocalDate().format(dateFormatter),
             startDate = finalStartDateTime.toLocalDate().format(dateFormatter),
