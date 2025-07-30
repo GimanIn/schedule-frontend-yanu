@@ -185,11 +185,13 @@ class ScheduleListDialog(
                 dismiss()
             },
             onDeleteClicked = { schedule, position ->
-                (activity as? MainActivity)?.removeSchedule(schedule)
-                dailySchedules.removeAt(position)
-                scheduleListAdapter.notifyItemRemoved(position)
-                dataChanged = true
-                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                // ✅ 서버 삭제 메서드 호출로 변경
+                (activity as? MainActivity)?.deleteScheduleFromServer(schedule) {
+                    // 성공 시 UI 업데이트
+                    dailySchedules.removeAt(position)
+                    scheduleListAdapter.notifyItemRemoved(position)
+                    dataChanged = true
+                }
             }
         )
 
@@ -197,7 +199,15 @@ class ScheduleListDialog(
         scheduleListRecyclerView.adapter = scheduleListAdapter
         scheduleListAdapter.notifyDataSetChanged()
 
+        // 1. 버튼의 동그란 배경을 코드로 새로 생성 (회색)
+        val addButtonBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#F0F0F0")) // 밝은 회색 배경
+        }
+        addButtonDialog.background = addButtonBg
 
+        // 2. 버튼의 '+' 아이콘 색상을 강제 설정 (어두운 회색)
+        addButtonDialog.setColorFilter(Color.DKGRAY)
         addButtonDialog.setOnClickListener {
             val title = scheduleEditTextDialog.text.toString().trim()
             if (title.isNotEmpty()) {
@@ -476,6 +486,15 @@ class ScheduleListDialog(
             Toast.makeText(context, "알림 설정이 변경되었습니다.", Toast.LENGTH_SHORT).show()
         }
 
+        // 1. '수정' 버튼의 동그란 배경을 코드로 새로 생성 (회색)
+        val editButtonBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#F0F0F0")) // 밝은 회색 배경
+        }
+        editScheduleButton.background = editButtonBg
+
+        // 2. '수정' 버튼 아이콘 색상을 강제 설정 (어두운 회색)
+        editScheduleButton.setColorFilter(Color.DKGRAY)
         editScheduleButton.setOnClickListener {
             (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
             dismiss()
@@ -489,13 +508,15 @@ class ScheduleListDialog(
             val confirmationDialog = DeleteConfirmationDialog {
                 val positionToRemove = dailySchedules.indexOf(schedule)
                 if (positionToRemove != -1) {
-                    (activity as? MainActivity)?.removeSchedule(schedule)
-                    dailySchedules.removeAt(positionToRemove)
-                    scheduleListAdapter.notifyItemRemoved(positionToRemove)
+                    // ✅ 서버 삭제 메서드 호출로 변경
+                    (activity as? MainActivity)?.deleteScheduleFromServer(schedule) {
+                        // 성공 시 UI 업데이트
+                        dailySchedules.removeAt(positionToRemove)
+                        scheduleListAdapter.notifyItemRemoved(positionToRemove)
+                        listViewContainer.visibility = View.VISIBLE
+                        detailViewContainer.visibility = View.GONE
+                    }
                 }
-                listViewContainer.visibility = View.VISIBLE
-                detailViewContainer.visibility = View.GONE
-                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
             confirmationDialog.show(parentFragmentManager, "DeleteConfirmationDialog")
         }
@@ -528,26 +549,22 @@ class ScheduleListDialog(
         }
 
         shareAsLinkButton.setOnClickListener {
-            val startDateTime = schedule.startDateTime
-            val endDateTime = schedule.endDateTime
-            if(startDateTime == null || endDateTime == null){
-                Toast.makeText(context, "시간이 지정된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
+            // 서버에 저장되지 않은 로컬 일정은 ID가 없으므로 공유 불가 처리
+            if (schedule.id == null || schedule.id == 0L) {
+                Toast.makeText(context, "서버에 저장된 일정만 링크로 공유할 수 있습니다.", Toast.LENGTH_SHORT).show()
+                popupWindow.dismiss()
                 return@setOnClickListener
             }
 
-            val deepLinkUri = Uri.parse("https://mycalendar.example.com/schedule").buildUpon()
-                .appendQueryParameter("title", schedule.title)
-                .appendQueryParameter("start", startDateTime.toString())
-                .appendQueryParameter("end", endDateTime.toString())
-                .appendQueryParameter("color", schedule.color.toString())
-                .appendQueryParameter("category", schedule.category)
-                .appendQueryParameter("location", schedule.location)
-                .appendQueryParameter("memo", schedule.memo)
+            // ✅ [수정] 모든 정보를 보내는 대신, 'id'만 담아서 링크 생성
+            val deepLinkUri = Uri.parse("mycalendar://schedule").buildUpon()
+                .appendQueryParameter("id", schedule.id.toString())
                 .build()
 
+            // 공유 시트(Share Sheet)에 표시될 텍스트와 함께 링크 전달
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, deepLinkUri.toString())
+                putExtra(Intent.EXTRA_TEXT, "내 캘린더에서 일정을 확인해보세요!\n${deepLinkUri}")
             }
             startActivity(Intent.createChooser(intent, "일정 공유"))
             popupWindow.dismiss()
