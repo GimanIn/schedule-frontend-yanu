@@ -51,7 +51,7 @@ object RetrofitClient {
         .addInterceptor(loggingInterceptor)
         .addInterceptor(authInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
