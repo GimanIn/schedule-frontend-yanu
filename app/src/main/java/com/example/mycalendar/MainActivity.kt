@@ -99,6 +99,7 @@ class MainActivity : AppCompatActivity() {
 
         extractDeepLinkData(intent)
 
+
         // ✅ 딥링크 데이터 추출 후 intent.data 정리
         intent.data = null
 
@@ -107,6 +108,12 @@ class MainActivity : AppCompatActivity() {
 
         RetrofitClient.init(this)
         prefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+        // MainActivity의 onCreate()에 임시로 추가
+        Log.d("KEY_CHECK", "=== SharedPreferences 키 확인 ===")
+        Log.d("KEY_CHECK", "PREFS_NAME: ${LoginActivity.PREFS_NAME}")
+        Log.d("KEY_CHECK", "KEY_ACCESS_TOKEN: ${LoginActivity.KEY_ACCESS_TOKEN}")
+        Log.d("KEY_CHECK", "실제 저장된 토큰: ${prefs.getString(LoginActivity.KEY_ACCESS_TOKEN, "없음")?.take(10)}...")
+        Log.d("KEY_CHECK", "모든 키 목록: ${prefs.all.keys.joinToString(", ")}")
         toolbar = findViewById(R.id.toolbar)
         calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
         scheduleEditText = findViewById(R.id.scheduleEditText)
@@ -694,6 +701,38 @@ class MainActivity : AppCompatActivity() {
             }
         }
         updateCalendar()
+    }
+    // 서버에서 일정 삭제
+    // 서버에서 일정 삭제하는 새 메서드
+    fun deleteScheduleFromServer(schedule: Schedule, onSuccess: () -> Unit) {
+        if (schedule.id == null) {
+            // 로컬 일정은 바로 삭제
+            removeSchedule(schedule)
+            onSuccess()
+            return
+        }
+
+        // 서버에 삭제 요청
+        RetrofitClient.apiService.deleteSchedule(schedule.id!!)
+            .enqueue(object : Callback<ApiResponse<Unit>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<Unit>>,
+                    response: Response<ApiResponse<Unit>>
+                ) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        // 서버 삭제 성공 시 로컬에서도 제거
+                        removeSchedule(schedule)
+                        onSuccess()
+                        Toast.makeText(this@MainActivity, "일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "일정 삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<Unit>>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
     private fun openDayView() {

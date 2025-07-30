@@ -185,11 +185,13 @@ class ScheduleListDialog(
                 dismiss()
             },
             onDeleteClicked = { schedule, position ->
-                (activity as? MainActivity)?.removeSchedule(schedule)
-                dailySchedules.removeAt(position)
-                scheduleListAdapter.notifyItemRemoved(position)
-                dataChanged = true
-                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                // ✅ 서버 삭제 메서드 호출로 변경
+                (activity as? MainActivity)?.deleteScheduleFromServer(schedule) {
+                    // 성공 시 UI 업데이트
+                    dailySchedules.removeAt(position)
+                    scheduleListAdapter.notifyItemRemoved(position)
+                    dataChanged = true
+                }
             }
         )
 
@@ -489,13 +491,15 @@ class ScheduleListDialog(
             val confirmationDialog = DeleteConfirmationDialog {
                 val positionToRemove = dailySchedules.indexOf(schedule)
                 if (positionToRemove != -1) {
-                    (activity as? MainActivity)?.removeSchedule(schedule)
-                    dailySchedules.removeAt(positionToRemove)
-                    scheduleListAdapter.notifyItemRemoved(positionToRemove)
+                    // ✅ 서버 삭제 메서드 호출로 변경
+                    (activity as? MainActivity)?.deleteScheduleFromServer(schedule) {
+                        // 성공 시 UI 업데이트
+                        dailySchedules.removeAt(positionToRemove)
+                        scheduleListAdapter.notifyItemRemoved(positionToRemove)
+                        listViewContainer.visibility = View.VISIBLE
+                        detailViewContainer.visibility = View.GONE
+                    }
                 }
-                listViewContainer.visibility = View.VISIBLE
-                detailViewContainer.visibility = View.GONE
-                Toast.makeText(context, "'${schedule.title}' 일정이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
             }
             confirmationDialog.show(parentFragmentManager, "DeleteConfirmationDialog")
         }
