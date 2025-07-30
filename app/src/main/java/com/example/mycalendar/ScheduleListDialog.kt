@@ -199,7 +199,15 @@ class ScheduleListDialog(
         scheduleListRecyclerView.adapter = scheduleListAdapter
         scheduleListAdapter.notifyDataSetChanged()
 
+        // 1. 버튼의 동그란 배경을 코드로 새로 생성 (회색)
+        val addButtonBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#F0F0F0")) // 밝은 회색 배경
+        }
+        addButtonDialog.background = addButtonBg
 
+        // 2. 버튼의 '+' 아이콘 색상을 강제 설정 (어두운 회색)
+        addButtonDialog.setColorFilter(Color.DKGRAY)
         addButtonDialog.setOnClickListener {
             val title = scheduleEditTextDialog.text.toString().trim()
             if (title.isNotEmpty()) {
@@ -478,6 +486,15 @@ class ScheduleListDialog(
             Toast.makeText(context, "알림 설정이 변경되었습니다.", Toast.LENGTH_SHORT).show()
         }
 
+        // 1. '수정' 버튼의 동그란 배경을 코드로 새로 생성 (회색)
+        val editButtonBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#F0F0F0")) // 밝은 회색 배경
+        }
+        editScheduleButton.background = editButtonBg
+
+        // 2. '수정' 버튼 아이콘 색상을 강제 설정 (어두운 회색)
+        editScheduleButton.setColorFilter(Color.DKGRAY)
         editScheduleButton.setOnClickListener {
             (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
             dismiss()
