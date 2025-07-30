@@ -102,4 +102,12 @@ interface ApiService {
     // 3. 계정 삭제 - @Header 제거
     @DELETE("/api/user")
     fun deleteAccount(): Call<ApiResponse<Unit>> // @Header 제거
+
+    // 🔔 알람 조회
+    @GET("/api/alarms/today")
+    fun getTodayAlarms(): Call<ApiResponse<List<AlarmResponse>>>
+
+
+    @PATCH("/api/alarms/{id}/mark-as-sent")
+    fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
 }
