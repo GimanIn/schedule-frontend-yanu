@@ -14,14 +14,16 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.mycalendar.model.Schedule
 import java.time.LocalDate
 import java.time.DayOfWeek
+import java.time.LocalTime
 
 class CalendarAdapter(
     var dayList: List<LocalDate?>, // 날짜 리스트 (nullable 허용)
-    var schedules: MutableMap<LocalDate, MutableList<Schedule>>, // ✅ var로 변경 + public
+    var schedules: MutableMap<LocalDate, MutableList<Schedule>>,
+    private var holidayMap: Map<LocalDate, String>, // 🔧 var로 변경!
     private val onItemClicked: (LocalDate) -> Unit // 날짜 클릭 이벤트
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
 
-    private val maxSchedulesPerDay = 4 // ✅ 카멜케이스로 변경
+    private val maxSchedulesPerDay = 4
 
     var selectedDate: LocalDate = LocalDate.now()
 
@@ -39,7 +41,7 @@ class CalendarAdapter(
     }
 
     override fun onBindViewHolder(holder: DayViewHolder, position: Int) {
-        val currentDate = dayList.getOrNull(position) // ✅ date 대신 currentDate 사용
+        val currentDate = dayList.getOrNull(position)
 
         if (currentDate == null || currentDate == LocalDate.MIN) {
             holder.itemView.visibility = View.INVISIBLE
@@ -49,8 +51,21 @@ class CalendarAdapter(
         holder.dayText.text = currentDate.dayOfMonth.toString()
         holder.itemView.visibility = View.VISIBLE
 
+        // --- 🎈 공휴일 및 주말 색상 처리 로직 ---
+        val isHoliday = holidayMap.containsKey(currentDate)
+
+        if (isHoliday) {
+            // 공휴일이면 빨간색
+            holder.dayText.setTextColor(Color.RED)
+        } else if (currentDate.dayOfWeek == DayOfWeek.SUNDAY) {
+            // 일요일이면 빨간색
+            holder.dayText.setTextColor(Color.RED)
+        } else {
+            // 평일은 검은색
+            holder.dayText.setTextColor(Color.BLACK)
+        }
+
         // 선택 날짜와 오늘 표시
-        holder.dayText.setTextColor(Color.BLACK)
         holder.dayText.background = null
         holder.itemView.background = null
 
@@ -64,10 +79,15 @@ class CalendarAdapter(
 
         holder.scheduleContainer.removeAllViews()
 
-        // ✅ 해당 날짜의 일정 가져오기 (로깅 추가)
+        if (isHoliday) {
+            // 공휴일 바를 맨 위에 추가
+            addHolidayBar(holder, holidayMap[currentDate] ?: "공휴일")
+        }
+
+        // ✅ 해당 날짜의 일정 가져오기 (Elvis 연산자 수정)
         val dailySchedules = schedules[currentDate]
             ?.sortedWith(
-                compareBy { it.startTime ?: java.time.LocalTime.MIN } // ✅ 제네릭 타입 제거
+                compareBy { it.startTime ?: LocalTime.MIN } // 🔧 java.time.LocalTime.MIN → LocalTime.MIN
             ) ?: emptyList()
 
         // ✅ 디버깅 로그
@@ -124,6 +144,38 @@ class CalendarAdapter(
         }
 
         holder.itemView.setOnClickListener { onItemClicked(currentDate) }
+    }
+
+    // 🎌 공휴일 맵 업데이트 함수 추가
+    fun updateHolidayMap(newHolidayMap: Map<LocalDate, String>) {
+        holidayMap = newHolidayMap // 🔧 this. 제거
+        Log.d("CalendarAdapter", "🎌 공휴일 맵 업데이트: ${newHolidayMap.size}개")
+        newHolidayMap.forEach { (date, name) ->
+            Log.d("CalendarAdapter", "  📅 $date: $name")
+        }
+    }
+
+    // 🎈 추가: 공휴일 바를 생성하고 추가하는 헬퍼 함수
+    private fun addHolidayBar(holder: DayViewHolder, holidayName: String) {
+        val holidayView = TextView(holder.itemView.context).apply {
+            text = holidayName
+            textSize = 10f
+            isSingleLine = true
+            setTextColor(Color.parseColor("#D32F2F")) // 공휴일 텍스트 색상
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(8, 2, 8, 2)
+
+            // 공휴일 바 배경 Drawable 적용
+            setBackgroundResource(R.drawable.holiday_bar_background)
+
+            val layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (20 * holder.itemView.context.resources.displayMetrics.density).toInt()
+            )
+            layoutParams.setMargins(4, 0, 4, 2)
+            this.layoutParams = layoutParams
+        }
+        holder.scheduleContainer.addView(holidayView)
     }
 
     private fun addEmptyBar(holder: DayViewHolder) {
@@ -189,7 +241,7 @@ class CalendarAdapter(
             setTextColor(Color.WHITE)
             setPadding(8, 2, 8, 2)
 
-            // ✅ 안전한 색상 처리
+            // ✅ 안전한 색상 처리 (KTX 확장함수 사용)
             val background = ContextCompat.getDrawable(holder.itemView.context, backgroundResId)
                 ?.mutate() as? GradientDrawable
 
@@ -197,7 +249,7 @@ class CalendarAdapter(
                 schedule.color // 이미 Int 타입이므로 그대로 사용
             } catch (e: Exception) {
                 Log.w("CalendarAdapter", "색상 파싱 실패: ${schedule.color}, 기본색 사용")
-                "#4285F4".toColorInt() // ✅ KTX 확장함수 사용
+                "#4285F4".toColorInt() // 🔧 KTX 확장함수 사용
             }
             background?.setColor(safeColor)
 
@@ -222,13 +274,7 @@ class CalendarAdapter(
 
     override fun getItemCount(): Int = dayList.size
 
-    // ✅ 외부에서 사용할 수 있는 간단한 새로고침 함수
-    fun refreshData() {
-        Log.d("CalendarAdapter", "🔄 CalendarAdapter 데이터 새로고침")
-        notifyDataSetChanged()
-    }
-
-    // ✅ 일정 데이터 상태 확인 함수 (디버깅용)
+    // ✅ 일정 데이터 상태 확인 함수 (디버깅용) - refreshData 함수 제거하고 이것만 유지
     fun logCurrentState() {
         Log.d("CalendarAdapter", "📊 === CalendarAdapter 현재 상태 ===")
         Log.d("CalendarAdapter", "📊 총 날짜 수: ${schedules.size}")

@@ -2,7 +2,21 @@ package com.example.mycalendar.network
 
 import com.example.mycalendar.model.*
 import retrofit2.Call
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+
+import com.example.mycalendar.model.HolidayItem
+import com.example.mycalendar.model.HolidayResponse
+import com.example.mycalendar.model.Items
+import com.example.mycalendar.model.ResponseData
 
 interface ApiService {
 

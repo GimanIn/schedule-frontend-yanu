@@ -9,14 +9,15 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import com.example.mycalendar.network.HolidayApiService
 
 object RetrofitClient {
 
     // ✅ 백엔드 서버 주소 수정 (Spring Boot 0.0.0.0:8080)
     //로컬 주소
-    //private const val BASE_URL = "http://10.0.2.2:8081/"
+    private const val BASE_URL = "http://10.0.2.2:8081/"
     //서버 주소
-    private const val BASE_URL = "https://schedule-backend-vmhb.onrender.com/"
+    //private const val BASE_URL = "https://schedule-backend-vmhb.onrender.com/"
 
 
     private var context: Context? = null
@@ -48,6 +49,18 @@ object RetrofitClient {
         Log.d("RetrofitClient", "📊 Response code: ${response.code}")
 
         response
+    }
+    // 🎌 공휴일 API용 별도 Retrofit 인스턴스 추가
+    private val holidayRetrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    // 🎌 HolidayApiService 인스턴스 추가
+    val holidayApiService: HolidayApiService by lazy {
+        holidayRetrofit.create(HolidayApiService::class.java)
     }
 
     // OkHttp 클라이언트 설정

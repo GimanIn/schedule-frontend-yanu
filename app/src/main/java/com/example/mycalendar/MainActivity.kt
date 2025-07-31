@@ -34,10 +34,14 @@ import com.example.mycalendar.model.ScheduleRequest
 import com.example.mycalendar.model.ScheduleResponse
 import com.example.mycalendar.model.*
 import com.example.mycalendar.network.RetrofitClient
+import com.example.mycalendar.model.HolidayResponse
+import com.example.mycalendar.network.HolidayApiService
 import com.google.android.material.navigation.NavigationView
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -55,6 +59,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var calendarAdapter: CalendarAdapter
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+
+    // 🎈 추가: 공휴일 데이터를 담을 Map
+    private var holidayMap = mapOf<LocalDate, String>()
+
+    // 🎈 추가: 공공데이터포털 API 서비스를 사용하기 위한 Retrofit 인스턴스
+    // RetrofitClient에 공휴일 API용 인스턴스를 만드는 로직이 없다면 아래처럼 직접 생성합니다.
+    private val holidayApiService: HolidayApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(HolidayApiService::class.java)
+    }
 
     private val schedules = mutableMapOf<LocalDate, MutableList<Schedule>>()
     private var selectedDate: LocalDate = LocalDate.now()
@@ -323,6 +340,9 @@ class MainActivity : AppCompatActivity() {
         checkLoginAndRefreshTokenIfNeeded {
             setupCalendar()
             fetchAllSchedulesForMonth()
+
+            // 🎈 추가: 공휴일 데이터도 함께 불러옵니다.
+            loadHolidaysForMonth()
             isContentLoaded = true
 
             // 모든 초기화 완료 후 딥링크 처리
@@ -520,7 +540,8 @@ class MainActivity : AppCompatActivity() {
 
         calendarAdapter = CalendarAdapter(
             dayList = daysInMonth,
-            schedules = schedules
+            schedules = schedules,
+            holidayMap = this.holidayMap
         ) { date ->
             if (selectedDate == date) {
                 val dailySchedules = schedules[date]
@@ -568,9 +589,19 @@ class MainActivity : AppCompatActivity() {
         // ✅ [첫 번째 파일의 방어 코드 적용]
         if (!isContentLoaded) return
 
+        // 🧪 공휴일 데이터 테스트 로그 추가
+        Log.d("HolidayTest", "현재 holidayMap 크기: ${holidayMap.size}")
+        holidayMap.forEach { (date, name) ->
+            Log.d("HolidayTest", "공휴일: $date -> $name")
+        }
+
         toolbar.title = selectedDate.format(DateTimeFormatter.ofPattern("yyyy년 MMMM", Locale.KOREA))
         calendarAdapter.dayList = generateDaysInMonth(YearMonth.from(selectedDate))
         calendarAdapter.selectedDate = selectedDate
+
+        // 🎌 이 부분 추가: CalendarAdapter에 공휴일 데이터 업데이트
+        calendarAdapter.updateHolidayMap(holidayMap)
+
         calendarAdapter.notifyDataSetChanged()
         updateScheduleHint(selectedDate)
     }
@@ -642,6 +673,40 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
                 }
             })
+    }
+
+    private fun loadHolidaysForMonth() {
+        val year = selectedDate.year.toString()
+        val month = String.format("%02d", selectedDate.monthValue)
+
+        // 🎈 중요: 공공데이터포털에서 발급받은 '일반 인증키(Decoding)'를 사용해야 합니다.
+        val serviceKey = "iKhl4kZB/Uuv4WeD9Dh1Mty25lohK3rO+CAi5UF6uUinCu9POa3mMWbwUnN3rFKW7l/fRbakWGlSdbJiXFALjQ=="
+
+        holidayApiService.getHolidays(serviceKey, year, month).enqueue(object : Callback<HolidayResponse> {
+            override fun onResponse(call: Call<HolidayResponse>, response: Response<HolidayResponse>) {
+                if (response.isSuccessful) {
+                    val items = response.body()?.response?.body?.items?.holidayItems ?: emptyList()
+                    Log.d("HolidayAPI", "✅ API 응답 성공: ${items.size}개의 공휴일 수신")
+
+                    // API 결과를 <LocalDate, String> 맵으로 변환
+                    holidayMap = items.associate {
+                        val dateStr = it.locdate.toString()
+                        val holidayDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd"))
+                        holidayDate to it.dateName
+                    }
+
+                    Log.d("HolidayAPI", "✅ ${year}년 ${month}월 공휴일 로딩 성공: ${holidayMap.size}개")
+                    updateCalendar() // 공휴일 정보로 캘린더 UI 갱신
+
+                } else {
+                    Log.e("HolidayAPI", "❌ 공휴일 API 응답 실패: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<HolidayResponse>, t: Throwable) {
+                Log.e("HolidayAPI", "❌ 공휴일 API 호출 실패", t)
+            }
+        })
     }
 
     // ✅ onNewIntent 간소화 - intent.data 정리 추가
@@ -907,10 +972,14 @@ class MainActivity : AppCompatActivity() {
                     selectedDate = selectedDate.minusMonths(1)
                     updateCalendar()
                     fetchAllSchedulesForMonth()
+                    // 🎈 추가
+                    loadHolidaysForMonth()
                 } else {
                     selectedDate = selectedDate.plusMonths(1)
                     updateCalendar()
                     fetchAllSchedulesForMonth()
+                    // 🎈 추가
+                    loadHolidaysForMonth()
                 }
                 return true
             }
