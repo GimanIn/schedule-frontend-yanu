@@ -44,7 +44,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDate
 import java.time.LocalTime
-
+import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -162,7 +162,28 @@ class MainActivity : AppCompatActivity() {
     // ✅ [첫 번째 파일의 onResume 권한 체크 적용]
     override fun onResume() {
         super.onResume()
-        checkPermissionAndLoadContent()
+        scheduleTodayAlarms() // ✅ 오늘의 알람 예약
+
+        private fun scheduleTodayAlarms() {
+            RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<ApiResponse<List<AlarmResponse>>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<List<AlarmResponse>>>,
+                    response: Response<ApiResponse<List<AlarmResponse>>>
+                ) {
+                    val alarms = response.body()?.data
+                    if (!alarms.isNullOrEmpty()) {
+                        for (alarm in alarms) {
+                            AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<List<AlarmResponse>>>, t: Throwable) {
+                    Log.e("AlarmFetch", "알람 불러오기 실패: ${t.message}")
+                }
+            })
+        }
+
     }
 
     // ✅ UI 초기화 (파라미터 제거)
