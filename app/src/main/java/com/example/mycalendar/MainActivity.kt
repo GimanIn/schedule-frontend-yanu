@@ -579,7 +579,8 @@ class MainActivity : AppCompatActivity() {
     private fun fetchSharedSchedule(scheduleId: Long) {
         Log.d("DeepLink", "fetchSharedSchedule 시작: $scheduleId")
 
-        RetrofitClient.apiService.getSchedule(scheduleId)
+        //RetrofitClient.apiService.getSchedule(scheduleId)
+        RetrofitClient.apiService.getSchedule(scheduleId)  //  이 친구 문제 가능성
             .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
                 override fun onResponse(
                     call: Call<ApiResponse<ScheduleResponse>>,

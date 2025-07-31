@@ -110,4 +110,9 @@ interface ApiService {
 
     @PATCH("/api/alarms/{id}/mark-as-sent")
     fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
+
+    // ✅ 딥링크로 공유된 일정 불러오기
+    @GET("/api/schedules/shared/{id}")
+    fun getSharedSchedule(@Path("id") id: Long): Call<ApiResponse<ScheduleResponse>>
+
 }
