@@ -116,6 +116,8 @@
         android:layout_height="wrap_content"
         app:boxBackgroundMode="outline"
         app:boxStrokeColor="#AAAAAA"
+        app:boxBackgroundColor="@android:color/white"
+        android:backgroundTint="@android:color/transparent"
         app:layout_constraintTop_toBottomOf="@id/phone_text"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btn_send_code"
@@ -125,7 +127,7 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_phone"
             android:layout_width="match_parent"
-            android:layout_height="35dp"
+            android:layout_height="wrap_content"
             android:inputType="phone"
             android:hint="ex. 01012345678"
             android:textColor="#000000"
@@ -133,6 +135,7 @@
             android:gravity="center_vertical"
             android:paddingHorizontal="12dp"
             android:textSize="13sp" />
+
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- 인증번호 발송 버튼 -->
@@ -200,7 +203,7 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_auth_code"
             android:layout_width="match_parent"
-            android:layout_height="35dp"
+            android:layout_height="wrap_content"
             android:inputType="number"
             android:hint="인증번호 입력"
             android:textColor="#000000"

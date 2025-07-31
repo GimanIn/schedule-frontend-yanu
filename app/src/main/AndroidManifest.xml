@@ -21,24 +21,19 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
 
-        <!-- 일반 액티비티들 -->
-        <activity android:name=".SearchActivity" android:exported="false" />
-        <activity android:name=".AddScheduleActivity" android:exported="false" />
-        <activity android:name=".SignupActivity" android:exported="false" />
-        <activity android:name=".SignupActivity2" android:exported="false" />
-        <activity android:name=".SignupCompleteActivity" android:exported="false" />
-        <activity android:name=".YearActivity" android:exported="true" />
-        <activity android:name=".MypageActivity" android:exported="false" />
-        <activity android:name=".ChangePasswordActivity" android:exported="false" />
+        <!-- 앱 실행 진입점 -->
+        <activity android:name=".LoginActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <!-- 딥링크 처리 MainActivity (앱 전용 스킴 적용) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop">
-
-
-
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -49,14 +44,24 @@
             </intent-filter>
         </activity>
 
+        <!-- 일반 액티비티들 -->
+        <activity android:name=".SearchActivity" android:exported="false" />
+        <activity android:name=".AddScheduleActivity" android:exported="false" />
+        <activity android:name=".SignupActivity" android:exported="false" />
+        <activity android:name=".SignupActivity2" android:exported="false" />
+        <activity android:name=".SignupCompleteActivity" android:exported="false" />
+        <activity android:name=".YearActivity" android:exported="true" />
+        <activity android:name=".MypageActivity" android:exported="false" />
+        <activity android:name=".ChangePasswordActivity" android:exported="false" />
 
-        <!-- 앱 실행 진입점 -->
-        <activity android:name=".LoginActivity" android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <!-- 🎯 이 부분이 누락되어 있었습니다! -->
+        <activity
+            android:name=".TermsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".PrivacyActivity"
+            android:exported="false" />
 
     </application>
 </manifest>

@@ -3,6 +3,7 @@
         <!-- 배경을 흰색으로 설정 -->
         <item name="android:windowBackground">@android:color/white</item>
         <item name="colorPrimary">@android:color/darker_gray</item>
+
     </style>
 
     <style name="DayTextStyle">

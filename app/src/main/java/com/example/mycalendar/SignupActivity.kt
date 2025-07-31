@@ -30,6 +30,9 @@ class SignupActivity : AppCompatActivity() {
         val etName = findViewById<EditText>(R.id.et_name)
         val etPhone = findViewById<EditText>(R.id.et_phone)
         val etAuthCode = findViewById<EditText>(R.id.et_auth_code)
+        etName.setTextColor(Color.BLACK)
+        etPhone.setTextColor(Color.BLACK)
+        etAuthCode.setTextColor(Color.BLACK)
 
         val btnSendCode = findViewById<Button>(R.id.btn_send_code)
         val btnCheckCode = findViewById<Button>(R.id.btn_check_code)
