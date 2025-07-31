@@ -159,31 +159,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ [첫 번째 파일의 onResume 권한 체크 적용]
+    // ✅ NEW: onResume에서 호출만 남김
     override fun onResume() {
         super.onResume()
-        scheduleTodayAlarms() // ✅ 오늘의 알람 예약
+        scheduleTodayAlarms() // ✅ NEW: 오늘 알람 예약
+    }
 
-        private fun scheduleTodayAlarms() {
-            RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<ApiResponse<List<AlarmResponse>>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<List<AlarmResponse>>>,
-                    response: Response<ApiResponse<List<AlarmResponse>>>
-                ) {
-                    val alarms = response.body()?.data
-                    if (!alarms.isNullOrEmpty()) {
-                        for (alarm in alarms) {
-                            AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)
-                        }
+    // ✅ NEW: 클래스 범위에 정의된 함수로 이동 + private 사용 가능
+    private fun scheduleTodayAlarms() {
+        RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<ApiResponse<List<AlarmResponse>>> {
+            override fun onResponse(
+                call: Call<ApiResponse<List<AlarmResponse>>>,
+                response: Response<ApiResponse<List<AlarmResponse>>>
+            ) {
+                val alarms = response.body()?.data
+                if (!alarms.isNullOrEmpty()) {
+                    for (alarm in alarms) {
+                        AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)
                     }
                 }
+            }
 
-                override fun onFailure(call: Call<ApiResponse<List<AlarmResponse>>>, t: Throwable) {
-                    Log.e("AlarmFetch", "알람 불러오기 실패: ${t.message}")
-                }
-            })
-        }
-
+            override fun onFailure(call: Call<ApiResponse<List<AlarmResponse>>>, t: Throwable) {
+                Log.e("AlarmFetch", "알람 불러오기 실패: ${t.message}")
+            }
+        })
     }
 
     // ✅ UI 초기화 (파라미터 제거)
