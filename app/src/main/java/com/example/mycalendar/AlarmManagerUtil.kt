@@ -7,7 +7,7 @@ import android.content.*
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.example.mycalendar.model.AlarmResponse
+import com.example.mycalendar.model.Alarm
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -25,7 +25,7 @@ object AlarmManagerUtil {
     /**
      * 알람 예약
      */
-    fun scheduleAlarm(context: Context, alarm: AlarmResponse): Boolean {
+    fun scheduleAlarm(context: Context, alarm: Alarm): Boolean {
         // 1. 필수 데이터 검증
         val alarmId = alarm.id ?: run {
             Log.e(TAG, "alarm.id가 null입니다. 알람 예약 생략")
@@ -127,7 +127,7 @@ object AlarmManagerUtil {
     /**
      * 여러 알람 일괄 예약
      */
-    fun scheduleMultipleAlarms(context: Context, alarms: List<AlarmResponse>): Int {
+    fun scheduleMultipleAlarms(context: Context, alarms: List<Alarm>): Int {
         var successCount = 0
         alarms.forEach { alarm ->
             if (scheduleAlarm(context, alarm)) {

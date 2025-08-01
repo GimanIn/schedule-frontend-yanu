@@ -8,9 +8,8 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Button
 import android.net.Uri
-
+import com.example.mycalendar.service.AlarmSync
 
 import android.provider.Settings
 import android.util.Log
@@ -50,7 +49,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -70,7 +68,6 @@ class MainActivity : AppCompatActivity() {
     private var holidayMap = mapOf<LocalDate, String>()
 
     // 🎈 추가: 공공데이터포털 API 서비스를 사용하기 위한 Retrofit 인스턴스
-    // RetrofitClient에 공휴일 API용 인스턴스를 만드는 로직이 없다면 아래처럼 직접 생성합니다.
     private val holidayApiService: HolidayApiService by lazy {
         Retrofit.Builder()
             .baseUrl("https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/")
@@ -92,11 +89,13 @@ class MainActivity : AppCompatActivity() {
     private var lastAlarmScheduleDate: String? = null
     private var isAlarmScheduling = false  // 알람 스케줄링 중복 방지
 
+    // ✅ 딥링크 처리용 변수 (간소화)
+    private var pendingDeepLinkScheduleId: Long? = null
+
     // ✅ [두 번째 파일의 간단한 권한 처리 + 첫 번째의 정교한 관리 결합]
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
-        // 권한 요청 결과 처리는 onResume()에서 일괄 처리
         if (isGranted) {
             Toast.makeText(this, "알림 권한이 허용되었습니다.", Toast.LENGTH_SHORT).show()
         } else {
@@ -117,18 +116,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ 딥링크 처리용 변수
-    private var pendingDeepLinkScheduleId: Long? = null
-    private var isDeepLinkProcessed = false  // 딥링크 처리 완료 플래그
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("DeepLink", "onCreate 실행 - URI: ${intent?.data}")
-
-        extractDeepLinkData(intent)
-
-        // ✅ 딥링크 데이터 추출 후 intent.data 정리
-        intent.data = null
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -146,6 +136,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("KEY_CHECK", "KEY_ACCESS_TOKEN: ${LoginActivity.KEY_ACCESS_TOKEN}")
         Log.d("KEY_CHECK", "실제 저장된 토큰: ${prefs.getString(LoginActivity.KEY_ACCESS_TOKEN, "없음")?.take(10)}...")
         Log.d("KEY_CHECK", "모든 키 목록: ${prefs.all.keys.joinToString(", ")}")
+
         toolbar = findViewById(R.id.toolbar)
         calendarRecyclerView = findViewById(R.id.calendarRecyclerView)
         scheduleEditText = findViewById(R.id.scheduleEditText)
@@ -153,17 +144,17 @@ class MainActivity : AppCompatActivity() {
         initializeUI()
         askNotificationPermission()
 
-        // ✅ 여기 한 줄만 추가하면 끝!
+        // ✅ 딥링크 처리 (onCreate 시점)
+        handleDeepLink(intent)
+
         checkPermissionAndLoadContent()
+        AlarmSync.syncAlarms(this)
 
         setupAlarmTestEntry()
         requestAlarmPermission()
-        startActivity(Intent(this, AlarmTestActivity::class.java))
 
-
-
-
-
+        // 테스트 액티비티 자동 시작 (필요시 제거)
+        // startActivity(Intent(this, AlarmTestActivity::class.java))
     }
 
     // MainActivity의 onCreate() 또는 onResume()에 추가
@@ -193,15 +184,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
-
-
-
-
-
-
-
     // MainActivity에 함수 추가
     private fun setupAlarmTestEntry() {
         // 월/년 텍스트를 5번 연속 탭하면 테스트 화면 열기
@@ -230,26 +212,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ 딥링크 데이터 추출
-    private fun extractDeepLinkData(intent: Intent) {
-        try {
-            val uri = intent.data
-            if (uri?.scheme == "mycalendar") {
-                val scheduleIdStr = uri.getQueryParameter("id")
-                val scheduleId = scheduleIdStr?.toLongOrNull()
-
-                if (scheduleId != null && scheduleId > 0) {
-                    pendingDeepLinkScheduleId = scheduleId
-                    Log.d("DeepLink", "딥링크 scheduleId 저장됨: $scheduleId")
-                } else {
-                    Log.w("DeepLink", "잘못된 scheduleId: $scheduleIdStr")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("DeepLink", "딥링크 파싱 에러", e)
-        }
-    }
-
     // ✅ 🚨 NEW: onResume 알람 로직 완전 개선 🚨
     override fun onResume() {
         super.onResume()
@@ -259,6 +221,156 @@ class MainActivity : AppCompatActivity() {
 
         // 하루가 바뀌었는지 체크 후 알람 재설정
         checkAndScheduleAlarmsIfNeeded()
+    }
+
+    // ✅ 새로운 인텐트 처리 (앱이 실행 중일 때)
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        Log.d("DeepLink", "🔗 onNewIntent 호출됨: ${intent?.data}")
+
+        // 새로운 딥링크 처리
+        handleDeepLink(intent)
+    }
+
+    // ✅ 통합된 딥링크 처리 함수
+    private fun handleDeepLink(intent: Intent?) {
+        val data = intent?.data
+        Log.d("DeepLink", "🔍 딥링크 데이터: $data")
+
+        if (data != null && data.scheme == "mycalendar") {
+            when (data.host) {
+                "schedule" -> {
+                    val scheduleIdStr = data.getQueryParameter("id")
+                    Log.d("DeepLink", "📅 스케줄 ID 문자열: $scheduleIdStr")
+
+                    if (!scheduleIdStr.isNullOrEmpty()) {
+                        try {
+                            val scheduleId = scheduleIdStr.toLong()
+                            Log.d("DeepLink", "📅 파싱된 스케줄 ID: $scheduleId")
+
+                            // 즉시 처리하거나 대기
+                            if (isContentLoaded) {
+                                navigateToSchedule(scheduleId)
+                            } else {
+                                pendingDeepLinkScheduleId = scheduleId
+                                Log.d("DeepLink", "📅 딥링크 대기 중: $scheduleId")
+                            }
+                        } catch (e: NumberFormatException) {
+                            Log.e("DeepLink", "잘못된 스케줄 ID: $scheduleIdStr")
+                            Toast.makeText(this, "잘못된 스케줄 ID입니다", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Log.w("DeepLink", "스케줄 ID가 없습니다")
+                        Toast.makeText(this, "스케줄 ID가 없습니다", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                else -> {
+                    Log.w("DeepLink", "알 수 없는 딥링크: ${data.host}")
+                }
+            }
+        }
+    }
+
+    // ✅ 스케줄로 이동하는 함수
+    private fun navigateToSchedule(scheduleId: Long) {
+        Log.d("DeepLink", "🚀 스케줄로 이동: ID=$scheduleId")
+
+        // 로딩 다이얼로그
+        val loadingDialog = android.app.ProgressDialog(this).apply {
+            setMessage("스케줄을 불러오는 중...")
+            setCancelable(false)
+            show()
+        }
+
+        // 스케줄 상세 조회
+        RetrofitClient.apiService.getSchedule(scheduleId).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+            override fun onResponse(
+                call: Call<ApiResponse<ScheduleResponse>>,
+                response: Response<ApiResponse<ScheduleResponse>>
+            ) {
+                loadingDialog.dismiss()
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val scheduleResponse = response.body()?.data
+                    if (scheduleResponse != null) {
+                        val schedule = ScheduleMapper.toSchedule(scheduleResponse)
+                        Log.d("DeepLink", "✅ 스케줄 로드 성공: ${schedule.title}")
+                        showScheduleDetail(schedule)
+                    } else {
+                        showError("스케줄 데이터가 없습니다")
+                    }
+                } else {
+                    showError("스케줄을 찾을 수 없습니다 (${response.code()})")
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
+                loadingDialog.dismiss()
+                Log.e("DeepLink", "네트워크 오류: ${t.message}")
+                showError("네트워크 오류가 발생했습니다")
+            }
+        })
+    }
+
+    // ✅ 스케줄 상세 정보 표시
+    private fun showScheduleDetail(schedule: Schedule) {
+        val message = """
+            📅 ${schedule.title}
+            🕐 ${schedule.startDate} ${schedule.startTime ?: "하루종일"}
+            📍 ${schedule.location ?: "위치 없음"}
+            📝 ${schedule.memo ?: "설명 없음"}
+        """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("📱 공유받은 일정")
+            .setMessage(message)
+            .setPositiveButton("확인") { _, _ -> }
+            .setNeutralButton("캘린더에서 보기") { _, _ ->
+                navigateToCalendarDate(schedule.startDate)
+            }
+            .setNegativeButton("내 캘린더에 추가") { _, _ ->
+                importScheduleToMyCalendar(schedule)
+            }
+            .show()
+    }
+
+    // ✅ 캘린더 날짜로 이동
+    private fun navigateToCalendarDate(date: LocalDate) {
+        selectedDate = date
+        updateCalendar()
+        fetchAllSchedulesForMonth()
+        Log.d("DeepLink", "📅 캘린더 날짜 이동: $date")
+    }
+
+    // ✅ 내 캘린더에 일정 추가
+    private fun importScheduleToMyCalendar(schedule: Schedule) {
+        val isAllDayEvent = schedule.startTime == null
+
+        val request = ScheduleRequest(
+            title = "[공유] ${schedule.title}",
+            memo = schedule.memo,
+            location = schedule.location,
+            category = schedule.category,
+            scheduledDate = schedule.scheduledDate.toString(),
+            startDate = schedule.startDate.toString(),
+            endDate = schedule.endDate.toString(),
+            startTime = if (isAllDayEvent) "00:00" else schedule.startTime.toString(),
+            endTime = if (isAllDayEvent) "23:59" else schedule.endTime.toString(),
+            allDay = isAllDayEvent,
+            isConfirmed = true,
+            color = String.format("#%06X", 0xFFFFFF and schedule.color),
+            alarmOn = schedule.alarmOn,
+            copiedFromScheduleId = schedule.id
+        )
+
+        addSchedule(request)
+        Toast.makeText(this, "일정이 내 캘린더에 추가되었습니다", Toast.LENGTH_SHORT).show()
+    }
+
+    // ✅ 에러 표시
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     // ✅ 🚨 NEW: 하루 변경 체크 후 알람 스케줄링 🚨
@@ -296,48 +408,57 @@ class MainActivity : AppCompatActivity() {
         cancelPreviousAlarms()
 
         // 3. 서버에서 오늘 알람 조회 및 등록
-        RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<ApiResponse<List<AlarmResponse>>> {
+        RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<TodayAlarmResponse> {
             override fun onResponse(
-                call: Call<ApiResponse<List<AlarmResponse>>>,
-                response: Response<ApiResponse<List<AlarmResponse>>>
+                call: Call<TodayAlarmResponse>,
+                response: Response<TodayAlarmResponse>
             ) {
                 isAlarmScheduling = false
 
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val alarms = response.body()?.data
-                    if (!alarms.isNullOrEmpty()) {
-                        Log.d("AlarmSchedule", "서버에서 ${alarms.size}개 알람 조회됨")
+                if (response.isSuccessful) {
+                    val todayAlarmResponse = response.body()
+                    if (todayAlarmResponse?.success == true) {
+                        val alarms = todayAlarmResponse.data.alarms  // 핵심 변경점!
 
-                        val successfulAlarmIds = mutableListOf<Long>()
-                        var successCount = 0
+                        if (alarms.isNotEmpty()) {
+                            Log.d("AlarmSchedule", "서버에서 ${alarms.size}개 알람 조회됨")
 
-                        for (alarm in alarms) {
-                            if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
-                                successCount++
-                                alarm.id?.let { successfulAlarmIds.add(it) }
+                            val successfulAlarmIds = mutableListOf<Long>()
+                            var successCount = 0
+
+                            for (alarm in alarms) {
+                                if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
+                                    successCount++
+                                    successfulAlarmIds.add(alarm.id)  // id는 nullable이 아니므로 ?. 제거
+                                }
                             }
-                        }
 
-                        // 4. 성공한 알람 ID들 저장
-                        saveScheduledAlarmIds(successfulAlarmIds)
+                            // 4. 성공한 알람 ID들 저장
+                            saveScheduledAlarmIds(successfulAlarmIds)
 
-                        // 5. 오늘 날짜 저장 (다음에 중복 실행 방지)
-                        val today = LocalDate.now().toString()
-                        alarmPrefs.edit()
-                            .putString("last_scheduled_date", today)
-                            .apply()
-                        lastAlarmScheduleDate = today
+                            // 5. 오늘 날짜 저장 (다음에 중복 실행 방지)
+                            val today = LocalDate.now().toString()
+                            alarmPrefs.edit()
+                                .putString("last_scheduled_date", today)
+                                .apply()
+                            lastAlarmScheduleDate = today
 
-                        Log.d("AlarmSchedule", "✅ 오늘 알람 등록 완료: ${successCount}/${alarms.size}")
+                            Log.d("AlarmSchedule", "✅ 오늘 알람 등록 완료: ${successCount}/${alarms.size}")
 
-                        // 사용자에게 피드백
-                        if (successCount > 0) {
-                            Toast.makeText(this@MainActivity,
-                                "오늘 알람 ${successCount}개가 설정되었습니다.",
-                                Toast.LENGTH_SHORT).show()
+                            // 사용자에게 피드백
+                            if (successCount > 0) {
+                                Toast.makeText(this@MainActivity,
+                                    "오늘 알람 ${successCount}개가 설정되었습니다.",
+                                    Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Log.d("AlarmSchedule", "오늘 예정된 알람이 없습니다.")
                         }
                     } else {
-                        Log.d("AlarmSchedule", "오늘 예정된 알람이 없습니다.")
+                        Log.e("AlarmSchedule", "❌ 서버 응답 실패: ${todayAlarmResponse?.message}")
+                        Toast.makeText(this@MainActivity,
+                            "알람 설정 중 오류가 발생했습니다.",
+                            Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Log.e("AlarmSchedule", "❌ 알람 조회 실패: ${response.code()}")
@@ -347,7 +468,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFailure(call: Call<ApiResponse<List<AlarmResponse>>>, t: Throwable) {
+            override fun onFailure(call: Call<TodayAlarmResponse>, t: Throwable) {
                 isAlarmScheduling = false
                 Log.e("AlarmFetch", "❌ 알람 불러오기 실패: ${t.message}")
                 Toast.makeText(this@MainActivity,
@@ -610,40 +731,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ [첫 번째 파일의 콘텐츠 로딩 분리]
+    // ✅ 콘텐츠 로딩 완료 후 대기 중인 딥링크 처리
     private fun loadMainContent() {
         checkLoginAndRefreshTokenIfNeeded {
             setupCalendar()
             fetchAllSchedulesForMonth()
-
-            // 🎈 추가: 공휴일 데이터도 함께 불러옵니다.
             loadHolidaysForMonth()
             isContentLoaded = true
 
-            // 모든 초기화 완료 후 딥링크 처리
-            processDeepLinkIfNeeded()
-        }
-    }
-
-    // ✅ 딥링크 처리 (단일 진입점) - 중복 처리 완전 방지
-    private fun processDeepLinkIfNeeded() {
-        val scheduleId = pendingDeepLinkScheduleId
-        if (scheduleId != null && !isDeepLinkProcessed) {
-            Log.d("DeepLink", "딥링크 처리 시작: $scheduleId")
-
-            // ✅ 즉시 플래그 설정 및 null로 설정해서 중복 처리 방지
-            isDeepLinkProcessed = true
-            pendingDeepLinkScheduleId = null
-
-            val accessToken = prefs.getString(LoginActivity.KEY_ACCESS_TOKEN, null)
-            if (accessToken.isNullOrEmpty()) {
-                Log.d("DeepLink", "로그인 필요 - LoginActivity로 이동")
-                val loginIntent = Intent(this, LoginActivity::class.java)
-                loginIntent.putExtra("redirect_schedule_id", scheduleId)
-                startActivity(loginIntent)
-            } else {
-                Log.d("DeepLink", "딥링크 일정 불러오기: $scheduleId")
-                fetchSharedSchedule(scheduleId)
+            // 대기 중인 딥링크 처리
+            pendingDeepLinkScheduleId?.let { scheduleId ->
+                Log.d("DeepLink", "📅 대기 중인 딥링크 처리: $scheduleId")
+                navigateToSchedule(scheduleId)
+                pendingDeepLinkScheduleId = null
             }
         }
     }
@@ -881,75 +981,6 @@ class MainActivity : AppCompatActivity() {
         updateScheduleHint(selectedDate)
     }
 
-    // ✅ 딥링크로 들어온 일정 ID로 서버에서 일정 조회
-    private fun fetchSharedSchedule(scheduleId: Long) {
-        Log.d("DeepLink", "fetchSharedSchedule 시작: $scheduleId")
-
-        //RetrofitClient.apiService.getSchedule(scheduleId)
-        RetrofitClient.apiService.getSchedule(scheduleId)  //  이 친구 문제 가능성
-            .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
-                override fun onResponse(
-                    call: Call<ApiResponse<ScheduleResponse>>,
-                    response: Response<ApiResponse<ScheduleResponse>>
-                ) {
-                    Log.d("DeepLink", "API 응답: ${response.isSuccessful}")
-
-                    if (response.isSuccessful && response.body()?.data != null) {
-                        val scheduleResponse = response.body()!!.data!!
-                        val schedule = ScheduleMapper.toSchedule(scheduleResponse)
-
-                        Log.d("DeepLink", "일정 조회 성공: ${schedule.title}")
-
-                        // ▼▼▼▼▼▼▼▼▼▼ 이 부분을 수정합니다. ▼▼▼▼▼▼▼▼▼▼
-                        // 기존 PreviewFragment 대신 ScheduleImportFragment 사용
-                        val importFragment = ScheduleImportFragment.newInstance(schedule)
-
-                        // '가져오기' 버튼을 눌렀을 때의 동작 설정
-                        importFragment.setOnScheduleImportListener(object : OnScheduleImportListener {
-                            override fun onScheduleImport(importedSchedule: Schedule) {
-
-                                // '하루 종일' 여부를 startTime의 존재 유무로 판단합니다.
-                                val isAllDayEvent = importedSchedule.startTime == null
-
-                                // API 전송용 ScheduleRequest 객체를 생성합니다.
-                                val request = ScheduleRequest(
-                                    title = importedSchedule.title,
-                                    memo = importedSchedule.memo,
-                                    location = importedSchedule.location,
-                                    category = importedSchedule.category,
-                                    scheduledDate = importedSchedule.scheduledDate.toString(),
-                                    startDate = importedSchedule.startDate.toString(),
-                                    endDate = importedSchedule.endDate.toString(),
-                                    // 하루 종일 일정이면 기본값(00:00)을, 아니면 실제 시간을 전송합니다.
-                                    startTime = if (isAllDayEvent) "00:00" else importedSchedule.startTime.toString(),
-                                    endTime = if (isAllDayEvent) "23:59" else importedSchedule.endTime.toString(),
-                                    allDay = isAllDayEvent, // 판단된 '하루 종일' 여부를 설정합니다.
-                                    isConfirmed = true,
-                                    color = String.format("#%06X", 0xFFFFFF and importedSchedule.color),
-                                    alarmOn = importedSchedule.alarmOn,
-                                    copiedFromScheduleId = importedSchedule.id
-                                )
-
-                                // 기존의 일정 생성 API를 호출합니다.
-                                addSchedule(request)
-                            }
-                        })
-
-                        importFragment.show(supportFragmentManager, "ScheduleImportFragment")
-                        // ▲▲▲▲▲▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲▲▲▲▲▲
-                    } else {
-                        Log.e("DeepLink", "일정 조회 실패: ${response.code()}")
-                        Toast.makeText(this@MainActivity, "일정을 불러오지 못했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<ApiResponse<ScheduleResponse>>, t: Throwable) {
-                    Log.e("DeepLink", "네트워크 오류", t)
-                    Toast.makeText(this@MainActivity, "서버 오류: ${t.localizedMessage}", Toast.LENGTH_SHORT).show()
-                }
-            })
-    }
-
     private fun loadHolidaysForMonth() {
         val year = selectedDate.year.toString()
         val month = String.format("%02d", selectedDate.monthValue)
@@ -982,31 +1013,6 @@ class MainActivity : AppCompatActivity() {
                 Log.e("HolidayAPI", "❌ 공휴일 API 호출 실패", t)
             }
         })
-    }
-
-    // ✅ onNewIntent 간소화 - intent.data 정리 추가
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        Log.d("DeepLink", "onNewIntent 실행 - URI: ${intent.data}")
-
-        // 새로운 인텐트 설정
-        setIntent(intent)
-
-        // ✅ 새로운 딥링크면 플래그 리셋
-        if (intent.data != null) {
-            isDeepLinkProcessed = false
-        }
-
-        // 딥링크 데이터 추출
-        extractDeepLinkData(intent)
-
-        // ✅ 딥링크 처리 후 intent.data 정리 (중복 방지)
-        intent.data = null
-
-        // 이미 로드된 상태라면 바로 처리
-        if (isContentLoaded) {
-            processDeepLinkIfNeeded()
-        }
     }
 
     private fun openAddScheduleActivity(date: LocalDate) {
@@ -1070,7 +1076,7 @@ class MainActivity : AppCompatActivity() {
         }
         updateCalendar()
     }
-    // 서버에서 일정 삭제
+
     // 서버에서 일정 삭제하는 새 메서드
     fun deleteScheduleFromServer(schedule: Schedule, onSuccess: () -> Unit) {
         if (schedule.id == null) {

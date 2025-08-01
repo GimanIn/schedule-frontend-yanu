@@ -12,12 +12,6 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-
-import com.example.mycalendar.model.HolidayItem
-import com.example.mycalendar.model.HolidayResponse
-import com.example.mycalendar.model.Items
-import com.example.mycalendar.model.ResponseData
-
 interface ApiService {
 
     // 🔗 1단계: 서버 연결 확인용
@@ -114,16 +108,22 @@ interface ApiService {
 
     // 3. 계정 삭제
     // 3. 계정 삭제 - @Header 제거
-    @DELETE("/api/user")
+    @DELETE("/api/user/deleted")
     fun deleteAccount(): Call<ApiResponse<Unit>> // @Header 제거
 
     // 🔔 알람 조회
+    // 기존 코드를 이것으로 변경
     @GET("/api/alarms/today")
-    fun getTodayAlarms(): Call<ApiResponse<List<AlarmResponse>>>
+    fun getTodayAlarms(): Call<TodayAlarmResponse>
 
 
     @PATCH("/api/alarms/{id}/mark-as-sent")
     fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
+
+    // 🔔 전체 알람 조회 (동기화용)
+    @GET("/api/alarms")
+    fun getAlarms(): Call<List<Alarm>>
+
 
     // ✅ 딥링크로 공유된 일정 불러오기
     @GET("/api/schedules/shared/{id}")

@@ -13,7 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.mycalendar.model.AlarmResponse
+import com.example.mycalendar.model.Alarm
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -118,10 +118,10 @@ class AlarmTestActivity : AppCompatActivity() {
     /**
      * ✅ 완전 안전한 AlarmResponse 생성
      */
-    private fun createSafeAlarmResponse(id: Long, alarmTime: String, message: String): AlarmResponse {
+    private fun createSafeAlarmResponse(id: Long, alarmTime: String, message: String): Alarm {
         val currentTimeStr = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-        return AlarmResponse(
+        return Alarm(
             id = id,
             scheduleId = id + 1,
             scheduleTitle = "🧪 테스트",

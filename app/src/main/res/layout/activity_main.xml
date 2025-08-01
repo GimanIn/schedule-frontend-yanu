@@ -202,7 +202,11 @@
         app:itemTextColor="@color/black"
         android:background="@color/white" >
 
-        <include layout="@layout/nav_drawer_footer" />
+        <include
+            layout="@layout/nav_drawer_footer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom" />
 
     </com.google.android.material.navigation.NavigationView>
 
