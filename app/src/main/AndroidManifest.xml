@@ -43,18 +43,12 @@
         <!-- 알림 테스트ㅂ -->
         <!-- AndroidManifest.xml의 <application> 태그 안에 추가 -->
         <!-- 기존 AlarmTestActivity 설정을 이렇게 변경 -->
-        <activity
-            android:name=".AlarmTestActivity"
-            android:exported="true"
-            android:label="🧪 알람 테스트"
-            android:theme="@style/Base.Theme.MyCalendar">
 
-            <!-- ⭐ 별도 앱 아이콘 생성 -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+
+        <!-- 이 부분이 있어야 함 -->
+        <receiver android:name=".AlarmReceiver" android:exported="false" />
+
+
 
 
 

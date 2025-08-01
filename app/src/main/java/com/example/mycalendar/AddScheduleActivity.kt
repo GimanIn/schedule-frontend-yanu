@@ -183,6 +183,7 @@ class AddScheduleActivity : AppCompatActivity() {
             return
         }
 
+
         // ⭐️ [최종 수정] Schedule.java 설계도에 맞춰 날짜와 시간을 분리해서 Request 객체를 만듭니다.
         val request = ScheduleRequest(
             title = title,

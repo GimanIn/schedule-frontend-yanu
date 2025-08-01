@@ -119,6 +119,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("DeepLink", "onCreate 실행 - URI: ${intent?.data}")
+        AlarmSync.fetchTodayAlarmsAndNotify(this)
+
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -150,7 +152,7 @@ class MainActivity : AppCompatActivity() {
         checkPermissionAndLoadContent()
         AlarmSync.syncAlarms(this)
 
-        setupAlarmTestEntry()
+
         requestAlarmPermission()
 
         // 테스트 액티비티 자동 시작 (필요시 제거)
@@ -184,33 +186,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // MainActivity에 함수 추가
-    private fun setupAlarmTestEntry() {
-        // 월/년 텍스트를 5번 연속 탭하면 테스트 화면 열기
-        var tapCount = 0
-        var lastTapTime = 0L
 
-        findViewById<TextView>(R.id.monthYearText)?.setOnClickListener {
-            val currentTime = System.currentTimeMillis()
-
-            if (currentTime - lastTapTime < 1000) { // 1초 내 연속 탭
-                tapCount++
-            } else {
-                tapCount = 1
-            }
-
-            lastTapTime = currentTime
-
-            if (tapCount >= 5) {
-                // 5번 탭하면 테스트 화면 열기
-                startActivity(Intent(this, AlarmTestActivity::class.java))
-                tapCount = 0
-                Toast.makeText(this, "🧪 알람 테스트 화면 열림", Toast.LENGTH_SHORT).show()
-            } else if (tapCount >= 3) {
-                Toast.makeText(this, "🧪 ${5-tapCount}번 더 탭하세요", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     // ✅ 🚨 NEW: onResume 알람 로직 완전 개선 🚨
     override fun onResume() {
@@ -313,26 +289,26 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    // ✅ 스케줄 상세 정보 표시
-    private fun showScheduleDetail(schedule: Schedule) {
-        val message = """
-            📅 ${schedule.title}
-            🕐 ${schedule.startDate} ${schedule.startTime ?: "하루종일"}
-            📍 ${schedule.location ?: "위치 없음"}
-            📝 ${schedule.memo ?: "설명 없음"}
-        """.trimIndent()
+    // ✅ 클래스 상단에 추가 (MainActivity 안에 변수 선언)
+    var isShowingImportDialog = false
 
-        AlertDialog.Builder(this)
-            .setTitle("📱 공유받은 일정")
-            .setMessage(message)
-            .setPositiveButton("확인") { _, _ -> }
-            .setNeutralButton("캘린더에서 보기") { _, _ ->
-                navigateToCalendarDate(schedule.startDate)
+    // ✅ 중복 방지 로직 포함
+    private fun showScheduleDetail(schedule: Schedule) {
+        if (isShowingImportDialog) return // 이미 다이얼로그 띄운 상태면 실행 안 함
+        isShowingImportDialog = true
+
+        Log.d("DeepLink", "✅ ScheduleImportFragment 표시: ${schedule.title}")
+
+        val importFragment = ScheduleImportFragment.newInstance(schedule)
+
+        importFragment.setOnScheduleImportListener(object : OnScheduleImportListener {
+            override fun onScheduleImport(importedSchedule: Schedule) {
+                importScheduleToMyCalendar(importedSchedule)
+                isShowingImportDialog = false // 다이얼로그 닫히면 초기화
             }
-            .setNegativeButton("내 캘린더에 추가") { _, _ ->
-                importScheduleToMyCalendar(schedule)
-            }
-            .show()
+        })
+
+        importFragment.show(supportFragmentManager, "ScheduleImportFragment")
     }
 
     // ✅ 캘린더 날짜로 이동
@@ -348,7 +324,7 @@ class MainActivity : AppCompatActivity() {
         val isAllDayEvent = schedule.startTime == null
 
         val request = ScheduleRequest(
-            title = "[공유] ${schedule.title}",
+            title = schedule.title,
             memo = schedule.memo,
             location = schedule.location,
             category = schedule.category,
@@ -415,7 +391,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 isAlarmScheduling = false
 
-                if (response.isSuccessful) {
+                if (response.isSuccessful && response.body()?.success == true) {
                     val todayAlarmResponse = response.body()
                     if (todayAlarmResponse?.success == true) {
                         val alarms = todayAlarmResponse.data.alarms  // 핵심 변경점!
@@ -426,7 +402,8 @@ class MainActivity : AppCompatActivity() {
                             val successfulAlarmIds = mutableListOf<Long>()
                             var successCount = 0
 
-                            for (alarm in alarms) {
+                            for (dto in alarms) {
+                                val alarm = dto.toAlarm()
                                 if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
                                     successCount++
                                     successfulAlarmIds.add(alarm.id)  // id는 nullable이 아니므로 ?. 제거

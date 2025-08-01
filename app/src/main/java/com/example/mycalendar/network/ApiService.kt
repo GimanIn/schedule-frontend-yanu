@@ -11,6 +11,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import com.example.mycalendar.model.AlarmListResponseDto
 
 interface ApiService {
 
@@ -111,9 +112,7 @@ interface ApiService {
     @DELETE("/api/user/deleted")
     fun deleteAccount(): Call<ApiResponse<Unit>> // @Header 제거
 
-    // 🔔 알람 조회
-    // 기존 코드를 이것으로 변경
-    @GET("/api/alarms/today")
+    @GET("/api/alarms/my/today")  // 엔드포인트 변경
     fun getTodayAlarms(): Call<TodayAlarmResponse>
 
 
@@ -121,8 +120,12 @@ interface ApiService {
     fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
 
     // 🔔 전체 알람 조회 (동기화용)
+    @GET("/api/alarms/my")
+    fun getMyAlarms(): Call<ApiResponse<AlarmListResponseDto>>
+
     @GET("/api/alarms")
     fun getAlarms(): Call<List<Alarm>>
+
 
 
     // ✅ 딥링크로 공유된 일정 불러오기
