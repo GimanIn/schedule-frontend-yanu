@@ -1,11 +1,17 @@
 package com.example.mycalendar
 
 import android.app.Activity
+import android.app.AlarmManager
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Button
+import android.net.Uri
+
+
 import android.provider.Settings
 import android.util.Log
 import android.view.GestureDetector
@@ -81,6 +87,11 @@ class MainActivity : AppCompatActivity() {
     private var isContentLoaded = false
     private var guidanceDialog: AlertDialog? = null
 
+    // ✅ 🚨 알람 관련 개선 변수들 추가 🚨
+    private lateinit var alarmPrefs: SharedPreferences
+    private var lastAlarmScheduleDate: String? = null
+    private var isAlarmScheduling = false  // 알람 스케줄링 중복 방지
+
     // ✅ [두 번째 파일의 간단한 권한 처리 + 첫 번째의 정교한 관리 결합]
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -116,7 +127,6 @@ class MainActivity : AppCompatActivity() {
 
         extractDeepLinkData(intent)
 
-
         // ✅ 딥링크 데이터 추출 후 intent.data 정리
         intent.data = null
 
@@ -125,6 +135,11 @@ class MainActivity : AppCompatActivity() {
 
         RetrofitClient.init(this)
         prefs = getSharedPreferences(LoginActivity.PREFS_NAME, MODE_PRIVATE)
+
+        // ✅ 🚨 알람 전용 SharedPreferences 초기화 🚨
+        alarmPrefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
+        lastAlarmScheduleDate = alarmPrefs.getString("last_scheduled_date", null)
+
         // MainActivity의 onCreate()에 임시로 추가
         Log.d("KEY_CHECK", "=== SharedPreferences 키 확인 ===")
         Log.d("KEY_CHECK", "PREFS_NAME: ${LoginActivity.PREFS_NAME}")
@@ -137,6 +152,80 @@ class MainActivity : AppCompatActivity() {
 
         initializeUI()
         askNotificationPermission()
+
+        // ✅ 여기 한 줄만 추가하면 끝!
+        checkPermissionAndLoadContent()
+
+        setupAlarmTestEntry()
+        requestAlarmPermission()
+
+
+
+
+    }
+
+    // MainActivity의 onCreate() 또는 onResume()에 추가
+    private fun requestAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // 권한 요청 다이얼로그 표시
+                AlertDialog.Builder(this)
+                    .setTitle("알람 권한 필요")
+                    .setMessage("정확한 시간에 알림을 받으려면 알람 권한을 허용해주세요.")
+                    .setPositiveButton("설정하기") { _, _ ->
+                        try {
+                            // 이 코드가 실행되면 앱이 알람 권한 목록에 나타남!
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            // 대체 방법
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            intent.data = Uri.fromParts("package", packageName, null)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton("나중에", null)
+                    .show()
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    // MainActivity에 함수 추가
+    private fun setupAlarmTestEntry() {
+        // 월/년 텍스트를 5번 연속 탭하면 테스트 화면 열기
+        var tapCount = 0
+        var lastTapTime = 0L
+
+        findViewById<TextView>(R.id.monthYearText)?.setOnClickListener {
+            val currentTime = System.currentTimeMillis()
+
+            if (currentTime - lastTapTime < 1000) { // 1초 내 연속 탭
+                tapCount++
+            } else {
+                tapCount = 1
+            }
+
+            lastTapTime = currentTime
+
+            if (tapCount >= 5) {
+                // 5번 탭하면 테스트 화면 열기
+                startActivity(Intent(this, AlarmTestActivity::class.java))
+                tapCount = 0
+                Toast.makeText(this, "🧪 알람 테스트 화면 열림", Toast.LENGTH_SHORT).show()
+            } else if (tapCount >= 3) {
+                Toast.makeText(this, "🧪 ${5-tapCount}번 더 탭하세요", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     // ✅ 딥링크 데이터 추출
@@ -159,31 +248,194 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ NEW: onResume에서 호출만 남김
+    // ✅ 🚨 NEW: onResume 알람 로직 완전 개선 🚨
     override fun onResume() {
         super.onResume()
-        scheduleTodayAlarms() // ✅ NEW: 오늘 알람 예약
+
+        // 권한 상태 재확인
+        checkPermissionAndLoadContent()
+
+        // 하루가 바뀌었는지 체크 후 알람 재설정
+        checkAndScheduleAlarmsIfNeeded()
     }
 
-    // ✅ NEW: 클래스 범위에 정의된 함수로 이동 + private 사용 가능
+    // ✅ 🚨 NEW: 하루 변경 체크 후 알람 스케줄링 🚨
+    private fun checkAndScheduleAlarmsIfNeeded() {
+        val today = LocalDate.now().toString()
+
+        // 같은 날이면 중복 실행 방지
+        if (lastAlarmScheduleDate == today) {
+            Log.d("AlarmSchedule", "오늘 이미 알람 스케줄링 완료: $today")
+            return
+        }
+
+        // 새로운 날이면 알람 스케줄링 실행
+        Log.d("AlarmSchedule", "새로운 날 감지: $lastAlarmScheduleDate -> $today")
+        scheduleTodayAlarms()
+    }
+
+    // ✅ 🚨 NEW: 완전히 개선된 알람 스케줄링 로직 🚨
     private fun scheduleTodayAlarms() {
+        // 중복 실행 방지
+        if (isAlarmScheduling) {
+            Log.d("AlarmSchedule", "이미 알람 스케줄링 중입니다.")
+            return
+        }
+
+        isAlarmScheduling = true
+
+        // 1. 권한 체크 먼저
+        if (!checkAlarmPermissions()) {
+            isAlarmScheduling = false
+            return
+        }
+
+        // 2. 기존 알람들 정리
+        cancelPreviousAlarms()
+
+        // 3. 서버에서 오늘 알람 조회 및 등록
         RetrofitClient.apiService.getTodayAlarms().enqueue(object : Callback<ApiResponse<List<AlarmResponse>>> {
             override fun onResponse(
                 call: Call<ApiResponse<List<AlarmResponse>>>,
                 response: Response<ApiResponse<List<AlarmResponse>>>
             ) {
-                val alarms = response.body()?.data
-                if (!alarms.isNullOrEmpty()) {
-                    for (alarm in alarms) {
-                        AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)
+                isAlarmScheduling = false
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val alarms = response.body()?.data
+                    if (!alarms.isNullOrEmpty()) {
+                        Log.d("AlarmSchedule", "서버에서 ${alarms.size}개 알람 조회됨")
+
+                        val successfulAlarmIds = mutableListOf<Long>()
+                        var successCount = 0
+
+                        for (alarm in alarms) {
+                            if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
+                                successCount++
+                                alarm.id?.let { successfulAlarmIds.add(it) }
+                            }
+                        }
+
+                        // 4. 성공한 알람 ID들 저장
+                        saveScheduledAlarmIds(successfulAlarmIds)
+
+                        // 5. 오늘 날짜 저장 (다음에 중복 실행 방지)
+                        val today = LocalDate.now().toString()
+                        alarmPrefs.edit()
+                            .putString("last_scheduled_date", today)
+                            .apply()
+                        lastAlarmScheduleDate = today
+
+                        Log.d("AlarmSchedule", "✅ 오늘 알람 등록 완료: ${successCount}/${alarms.size}")
+
+                        // 사용자에게 피드백
+                        if (successCount > 0) {
+                            Toast.makeText(this@MainActivity,
+                                "오늘 알람 ${successCount}개가 설정되었습니다.",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Log.d("AlarmSchedule", "오늘 예정된 알람이 없습니다.")
                     }
+                } else {
+                    Log.e("AlarmSchedule", "❌ 알람 조회 실패: ${response.code()}")
+                    Toast.makeText(this@MainActivity,
+                        "알람 설정 중 오류가 발생했습니다.",
+                        Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<ApiResponse<List<AlarmResponse>>>, t: Throwable) {
-                Log.e("AlarmFetch", "알람 불러오기 실패: ${t.message}")
+                isAlarmScheduling = false
+                Log.e("AlarmFetch", "❌ 알람 불러오기 실패: ${t.message}")
+                Toast.makeText(this@MainActivity,
+                    "네트워크 오류로 알람 설정에 실패했습니다.",
+                    Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    // ✅ 🚨 NEW: 알람 권한 종합 체크 🚨
+    private fun checkAlarmPermissions(): Boolean {
+        // 1. 안드로이드 12+ 정확한 알람 권한 체크
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Log.w("AlarmSchedule", "정확한 알람 권한이 없습니다")
+                showAlarmPermissionDialog()
+                return false
+            }
+        }
+
+        // 2. 안드로이드 13+ 알림 권한 체크
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                Log.w("AlarmSchedule", "알림 권한이 없습니다")
+                return false
+            }
+        }
+
+        return true
+    }
+
+    // ✅ 🚨 NEW: 알람 권한 요청 다이얼로그 🚨
+    private fun showAlarmPermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("알람 권한 필요")
+            .setMessage("정확한 시간에 알림을 받으려면 알람 권한이 필요합니다.")
+            .setPositiveButton("설정하기") { _, _ ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    } catch (e: Exception) {
+                        Log.e("AlarmPermission", "알람 권한 설정 화면 열기 실패", e)
+                        Toast.makeText(this, "설정 화면을 열 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("나중에", null)
+            .show()
+    }
+
+    // ✅ 🚨 NEW: 이전 알람들 정리 로직 🚨
+    private fun cancelPreviousAlarms() {
+        try {
+            val alarmIds = alarmPrefs.getStringSet("scheduled_alarm_ids", emptySet()) ?: emptySet()
+
+            if (alarmIds.isNotEmpty()) {
+                Log.d("AlarmCancel", "이전 알람 ${alarmIds.size}개 취소 시작")
+
+                var cancelCount = 0
+                alarmIds.forEach { idStr ->
+                    val alarmId = idStr.toLongOrNull()
+                    if (alarmId != null) {
+                        if (AlarmManagerUtil.cancelAlarm(this, alarmId)) {
+                            cancelCount++
+                        }
+                    }
+                }
+
+                Log.d("AlarmCancel", "✅ 이전 알람 취소 완료: ${cancelCount}/${alarmIds.size}")
+            }
+
+            // 정리 후 저장소 초기화
+            alarmPrefs.edit().remove("scheduled_alarm_ids").apply()
+
+        } catch (e: Exception) {
+            Log.e("AlarmCancel", "이전 알람 취소 중 오류", e)
+        }
+    }
+
+    // ✅ 🚨 NEW: 성공한 알람 ID들 저장 🚨
+    private fun saveScheduledAlarmIds(alarmIds: List<Long>) {
+        try {
+            val idSet = alarmIds.map { it.toString() }.toSet()
+            alarmPrefs.edit().putStringSet("scheduled_alarm_ids", idSet).apply()
+            Log.d("AlarmSave", "✅ 알람 ID ${alarmIds.size}개 저장 완료")
+        } catch (e: Exception) {
+            Log.e("AlarmSave", "알람 ID 저장 실패", e)
+        }
     }
 
     // ✅ UI 초기화 (파라미터 제거)

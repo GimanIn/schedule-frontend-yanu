@@ -14,30 +14,86 @@
         android:layout_height="match_parent"
         android:background="#FFFFFF" >
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="#FFFFFF"
-        android:theme="@style/ThemeOverlay.Material3.Toolbar.Surface"
-        app:layout_constraintTop_toTopOf="parent"
-        app:titleTextColor="@android:color/black"
-        app:popupTheme="@style/ThemeOverlay.Material3.Light"
-        app:navigationIcon="@drawable/ic_menu"
-        app:navigationIconTint="@android:color/black" />
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="#FFFFFF"
+            android:theme="@style/ThemeOverlay.Material3.Toolbar.Surface"
+            app:layout_constraintTop_toTopOf="parent"
+            app:titleTextColor="@android:color/black"
+            app:popupTheme="@style/ThemeOverlay.Material3.Light"
+            app:navigationIcon="@drawable/ic_menu"
+            app:navigationIconTint="@android:color/black" />
 
-    <TextView
-        android:id="@+id/monthYearText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:textColor="@android:color/black"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="2025년 7월"/>
+        <TextView
+            android:id="@+id/monthYearText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:textColor="@android:color/black"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="2025년 7월"/>
+
+        <!-- 🧪 알람 테스트 버튼 그룹 추가 (디버그용) -->
+        <LinearLayout
+            android:id="@+id/alarmTestButtonGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/monthYearText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/monthYearText"
+            tools:visibility="visible">
+
+            <!-- 30초 후 알람 테스트 -->
+            <Button
+                android:id="@+id/test30sButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginEnd="4dp"
+                android:backgroundTint="#FF9800"
+                android:minWidth="0dp"
+                android:paddingHorizontal="8dp"
+                android:text="30초"
+                android:textColor="@android:color/white"
+                android:textSize="10sp" />
+
+            <!-- 1분 후 알람 테스트 -->
+            <Button
+                android:id="@+id/test1mButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginEnd="4dp"
+                android:backgroundTint="#4CAF50"
+                android:minWidth="0dp"
+                android:paddingHorizontal="8dp"
+                android:text="1분"
+                android:textColor="@android:color/white"
+                android:textSize="10sp" />
+
+            <!-- 상태 체크 -->
+            <Button
+                android:id="@+id/checkStatusButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:backgroundTint="#2196F3"
+                android:minWidth="0dp"
+                android:paddingHorizontal="8dp"
+                android:text="상태"
+                android:textColor="@android:color/white"
+                android:textSize="10sp" />
+
+        </LinearLayout>
 
         <ImageButton
             android:id="@+id/aiButton"
@@ -45,7 +101,7 @@
             android:layout_height="48dp"
             android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="AI 요약"
+            android:contentDescription="AI 요약 (길게 누르면 1분 후 알람 테스트)"
             android:padding="2dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_ai_custom"
@@ -59,7 +115,7 @@
             android:layout_height="48dp"
             android:layout_marginEnd="16dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/search_icon_description"
+            android:contentDescription="검색 (길게 누르면 알람 상태 체크)"
             android:padding="8dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_search"
@@ -67,71 +123,71 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/monthYearText" />
 
-    <LinearLayout
-        android:id="@+id/weekHeaderLayout"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingVertical="8dp"
-        android:layout_marginTop="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/monthYearText">
-        <TextView style="@style/DayOfWeek" android:text="@string/day_sun"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_mon"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_tue"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_wed"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_thu"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_fri"/>
-        <TextView style="@style/DayOfWeek" android:text="@string/day_sat"/>
-    </LinearLayout>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/calendarRecyclerView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/scheduleInputLayout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/weekHeaderLayout" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/scheduleInputLayout"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <EditText
-            android:id="@+id/scheduleEditText"
+        <LinearLayout
+            android:id="@+id/weekHeaderLayout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:autofillHints="text"
-            android:background="@drawable/edit_text_background"
-            android:hint="@string/schedule_hint"
-            android:inputType="text"
-            android:minHeight="48dp"
-            android:padding="12dp"
-            android:textSize="14sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/addButton"
+            android:orientation="horizontal"
+            android:paddingVertical="8dp"
+            android:layout_marginTop="20dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/monthYearText">
+            <TextView style="@style/DayOfWeek" android:text="@string/day_sun"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_mon"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_tue"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_wed"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_thu"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_fri"/>
+            <TextView style="@style/DayOfWeek" android:text="@string/day_sat"/>
+        </LinearLayout>
 
-        <ImageButton
-            android:id="@+id/addButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:contentDescription="@string/add_schedule_button"
-            android:src="@drawable/ic_add"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/calendarRecyclerView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toTopOf="@+id/scheduleInputLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/weekHeaderLayout" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/scheduleInputLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintStart_toStartOf="parent">
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <EditText
+                android:id="@+id/scheduleEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:autofillHints="text"
+                android:background="@drawable/edit_text_background"
+                android:hint="@string/schedule_hint"
+                android:inputType="text"
+                android:minHeight="48dp"
+                android:padding="12dp"
+                android:textSize="14sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/addButton"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageButton
+                android:id="@+id/addButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/add_schedule_button"
+                android:src="@drawable/ic_add"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -3,6 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.mycalendar">
 
+
+
+
+
+    <!-- AndroidManifest.xml의 <manifest> 태그 안에 확인 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+
     <!-- 권한 설정 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.INTERNET" />
@@ -19,6 +28,8 @@
         android:theme="@style/Base.Theme.MyCalendar"
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="true"
+
+
         tools:targetApi="31">
 
         <!-- 앱 실행 진입점 -->
@@ -28,6 +39,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 알림 테스트ㅂ -->
+        <!-- AndroidManifest.xml의 <application> 태그 안에 추가 -->
+        <!-- 기존 AlarmTestActivity 설정을 이렇게 변경 -->
+        <activity
+            android:name=".AlarmTestActivity"
+            android:exported="true"
+            android:label="🧪 알람 테스트"
+            android:theme="@style/Base.Theme.MyCalendar">
+
+            <!-- ⭐ 별도 앱 아이콘 생성 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
+
 
         <!-- 딥링크 처리 MainActivity (앱 전용 스킴 적용) -->
         <activity

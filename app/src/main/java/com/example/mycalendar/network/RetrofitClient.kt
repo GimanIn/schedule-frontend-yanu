@@ -15,7 +15,7 @@ object RetrofitClient {
 
     // ✅ 백엔드 서버 주소 수정 (Spring Boot 0.0.0.0:8080)
     //로컬 주소
-    private const val BASE_URL = "http://10.0.2.2:8081/"
+    private const val BASE_URL = "http://10.0.2.2:8080/"
     //서버 주소
     //private const val BASE_URL = "https://schedule-backend-vmhb.onrender.com/"
 

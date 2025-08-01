@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    tools:context=".AlarmTestActivity">
+
+    <!-- 툴바 (아이콘 문제 해결) -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#FFFFFF"
+        app:layout_constraintTop_toTopOf="parent"
+        app:titleTextColor="@android:color/black" />
+
+    <!-- ✅ 뒤로가기 버튼 추가 (코드와 호환) -->
+    <Button
+        android:id="@+id/backButton"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:text="← 뒤로가기"
+        android:textColor="@android:color/black"
+        android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+
+    <!-- 상태 표시 영역 -->
+    <ScrollView
+        android:id="@+id/statusScrollView"
+        android:layout_width="0dp"
+        android:layout_height="120dp"
+        android:layout_margin="16dp"
+        android:background="#F5F5F5"
+        android:padding="12dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/backButton">
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:text="🧪 알람 테스트 상태를 확인 중..."
+            android:textColor="@android:color/black"
+            android:textSize="12sp" />
+
+    </ScrollView>
+
+    <!-- 카운트다운 표시 -->
+    <TextView
+        android:id="@+id/countdownText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="#E3F2FD"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text=""
+        android:textColor="#1976D2"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/statusScrollView"
+        tools:text="⏳ 0:30 남음" />
+
+    <!-- 테스트 버튼들 -->
+    <LinearLayout
+        android:id="@+id/testButtonsLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/countdownText">
+
+        <!-- 빠른 테스트 그룹 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="⚡ 빠른 테스트"
+            android:textColor="@android:color/black"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/test10sButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="#FF5722"
+                android:text="⚡ 10초 후"
+                android:textColor="@android:color/white" />
+
+            <Button
+                android:id="@+id/test30sButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="#FF9800"
+                android:text="🚀 30초 후"
+                android:textColor="@android:color/white" />
+
+        </LinearLayout>
+
+        <!-- 일반 테스트 그룹 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="⏰ 일반 테스트"
+            android:textColor="@android:color/black"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/test1mButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="#4CAF50"
+                android:text="⏰ 1분 후"
+                android:textColor="@android:color/white" />
+
+            <Button
+                android:id="@+id/test2mButton"
+                style="@style/Widget.Material3.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="#2196F3"
+                android:text="🕐 2분 후"
+                android:textColor="@android:color/white" />
+
+        </LinearLayout>
+
+        <!-- 관리 버튼들 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="🛠️ 관리 도구"
+            android:textColor="@android:color/black"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/checkStatusButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="📊 상태 체크"
+                android:textColor="#2196F3" />
+
+            <Button
+                android:id="@+id/cancelAllButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🗑️ 전체 취소"
+                android:textColor="#F44336" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/openSettingsButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚙️ 권한 설정"
+            android:textColor="#9C27B0" />
+
+    </LinearLayout>
+
+    <!-- 도움말 -->
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="#FFF3E0"
+        android:padding="12dp"
+        android:text="💡 팁: 10초 테스트로 빠르게 확인하고, 1-2분 테스트로 정확성을 검증하세요. 상태 체크에서 권한을 확인할 수 있습니다."
+        android:textColor="#E65100"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/testButtonsLayout" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
