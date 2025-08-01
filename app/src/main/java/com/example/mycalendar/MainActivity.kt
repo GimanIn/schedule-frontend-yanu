@@ -158,6 +158,8 @@ class MainActivity : AppCompatActivity() {
 
         setupAlarmTestEntry()
         requestAlarmPermission()
+        startActivity(Intent(this, AlarmTestActivity::class.java))
+
 
 
 
