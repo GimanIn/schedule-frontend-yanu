@@ -89,10 +89,14 @@ class ScheduleListDialog(
             Log.d("DeepLink", "ScheduleListDialog 딥링크 scheduleId: $scheduleIdParam")
             val scheduleId = scheduleIdParam?.toLongOrNull()
 
+            // 🔐 인텐트 반복 호출 방지를 위해 초기화 처리
+            activity?.intent?.data = null
+
             if (scheduleId != null) {
                 fetchSharedSchedule(scheduleId)
             }
         }
+
 
         // [스와이프] 제스처 감지기 설정 및 뷰에 터치 리스너 연결
         setupGestureDetector()

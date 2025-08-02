@@ -306,7 +306,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 스케줄 상세 조회
-        RetrofitClient.apiService.getSchedule(scheduleId).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
+        RetrofitClient.apiService.getPublicSchedule(scheduleId)
+            .enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
             override fun onResponse(
                 call: Call<ApiResponse<ScheduleResponse>>,
                 response: Response<ApiResponse<ScheduleResponse>>

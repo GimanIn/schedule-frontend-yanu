@@ -49,17 +49,24 @@ object ScheduleMapper {
             startDate
         }
 
+        // ✅ color 파싱 오류 방지
+        val parsedColor = try {
+            Color.parseColor(response.color)
+        } catch (e: Exception) {
+            Color.BLUE // fallback: 기본값 설정
+        }
+
         return Schedule(
             id = response.id,
             title = response.title,
             memo = response.memo ?: "",
             location = response.location,
             category = response.category,
-            color = Color.parseColor(response.color),
-            startDate = response.startDate?.let { LocalDate.parse(it) } ?: LocalDate.now(),
-            endDate = response.endDate?.let { LocalDate.parse(it) } ?: LocalDate.now(),
-            startTime = response.startTime?.let { LocalTime.parse(it) } ?: LocalTime.of(9, 0),
-            endTime = response.endTime?.let { LocalTime.parse(it) } ?: LocalTime.of(10, 0),
+            color = parsedColor, // ✅ 수정됨
+            startDate = startDate,
+            endDate = endDate,
+            startTime = startTime ?: LocalTime.of(9, 0),
+            endTime = endTime ?: LocalTime.of(10, 0),
             isConfirmed = response.isConfirmed,
             alarmOn = response.alarmOn,
             isDeleted = response.isDeleted ?: false,

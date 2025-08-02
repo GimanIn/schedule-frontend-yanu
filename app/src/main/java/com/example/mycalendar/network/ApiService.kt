@@ -55,7 +55,7 @@ interface ApiService {
     @DELETE("/api/schedules/{id}")
     fun deleteSchedule(@Path("id") scheduleId: Long): Call<ApiResponse<Unit>> // 일정 삭제
 
-    @GET("/api/schedules/{id}")
+    @GET("/api/schedules/{id}") //
     fun getSchedule(@Path("id") scheduleId: Long): Call<ApiResponse<ScheduleResponse>> // 특정 일정 조회
 
     @GET("/api/schedules")
@@ -80,6 +80,13 @@ interface ApiService {
 
     @PUT("/api/schedules/shared/{id}/cancel")
     fun cancelShare(@Path("id") shareId: Long): Call<ApiResponse<String>> // 공유된 일정 취소
+
+    // ✅ 공유된 일정 조회 (비로그인 딥링크용 → 새로 추가!)
+    @GET("/api/schedules/public/{id}")
+    fun getPublicSchedule(@Path("id") scheduleId: Long): Call<ApiResponse<ScheduleResponse>>
+
+
+
 
     // 🤖 AI 요약 ------------------------------------
 
