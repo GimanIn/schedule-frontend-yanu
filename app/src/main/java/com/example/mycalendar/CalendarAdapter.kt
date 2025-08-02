@@ -23,7 +23,7 @@ class CalendarAdapter(
     private val onItemClicked: (LocalDate) -> Unit // 날짜 클릭 이벤트
 ) : RecyclerView.Adapter<CalendarAdapter.DayViewHolder>() {
 
-    private val maxSchedulesPerDay = 4
+    private val maxSchedulesPerDay = 3
 
     var selectedDate: LocalDate = LocalDate.now()
 

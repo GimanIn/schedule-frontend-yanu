@@ -1,7 +1,0 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- 기존 스타일들 유지하면서 아래 스타일 추가 -->
-    <style name="CustomEditText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
-        <item name="android:textColor">#FF0000</item>          <!-- 빨간 글자 -->
-        <item name="android:textColorHint">#888888</item>      <!-- 회색 힌트 -->
-    </style>
-</resources>

@@ -634,6 +634,20 @@ class MainActivity : AppCompatActivity() {
             }.also { drawerLayout.closeDrawer(GravityCompat.START) }
         }
 
+        scheduleEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s.isNullOrBlank()) {
+                    // 텍스트가 비어있으면 기본 회색 테두리로 변경
+                    scheduleEditText.setBackgroundResource(R.drawable.edittext_border_default)
+                } else {
+                    // 텍스트가 한 글자라도 있으면 진한 남색 테두리로 변경
+                    scheduleEditText.setBackgroundResource(R.drawable.edittext_border_focused)
+                }
+            }
+        })
+
         // ✅ 사이드 메뉴 하단 텍스트뷰 클릭 처리 (이용약관 / 개인정보)
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         val textTerms = navigationView.findViewById<TextView>(R.id.textTerms)
@@ -1176,7 +1190,7 @@ class MainActivity : AppCompatActivity() {
                 endTime = endTime,      // 또는 그냥 "12:00" 유지
                 allDay = false,
                 isConfirmed = true,
-                color = "blue",
+                color = "#4285F4",
                 alarmOn = true,
                 copiedFromScheduleId = copiedFromScheduleId
             )

@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
@@ -41,6 +43,7 @@ class AddScheduleActivity : AppCompatActivity() {
     private lateinit var startTimeText: TextView
     private lateinit var endTimeText: TextView
     private lateinit var colorDot: View
+    private lateinit var saveButton: Button
 
     private var startDate: LocalDate? = null
     private var endDate: LocalDate? = null
@@ -69,6 +72,7 @@ class AddScheduleActivity : AppCompatActivity() {
         timePickerLayout = findViewById(R.id.timePickerLayout)
         startTimeText = findViewById(R.id.startTimeText)
         endTimeText = findViewById(R.id.endTimeText)
+        saveButton = findViewById(R.id.save_button)
     }
 
     private fun initData() {
@@ -122,13 +126,14 @@ class AddScheduleActivity : AppCompatActivity() {
         updateDateTextViews()
         colorDot.background.mutate().setTint(selectedColor)
         timePickerLayout.visibility = if (timeSwitch.isChecked) View.VISIBLE else View.GONE
+        updateSaveButtonState()
     }
 
     private fun setupListeners() {
         val backButton = findViewById<ImageButton>(R.id.back_button)
         val copyButton = findViewById<ImageButton>(R.id.copy_button)
         val dateRangeLayout = findViewById<LinearLayout>(R.id.dateRangeLayout)
-        val saveButton = findViewById<Button>(R.id.save_button)
+
 
         backButton.setOnClickListener { finish() }
         saveButton.setOnClickListener { handleSave(isCopy = false) }
@@ -144,6 +149,28 @@ class AddScheduleActivity : AppCompatActivity() {
         startTimeText.setOnClickListener { openTimePicker(true) }
         endTimeText.setOnClickListener { openTimePicker(false) }
         colorDot.setOnClickListener { openColorPicker() }
+
+        titleEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                // 텍스트가 변경될 때마다 버튼 상태를 업데이트합니다.
+                updateSaveButtonState()
+            }
+        })
+    }
+
+    private fun updateSaveButtonState() {
+        val title = titleEditText.text.toString()
+        if (title.isNotBlank()) {
+            // 제목이 있으면: 버튼 활성화 및 선택된 색상으로 변경
+            saveButton.isEnabled = true
+            saveButton.setBackgroundColor(selectedColor)
+        } else {
+            // 제목이 없으면: 버튼 비활성화 및 회색으로 변경
+            saveButton.isEnabled = false
+            saveButton.setBackgroundColor(Color.LTGRAY) // 연한 회색
+        }
     }
 
     private fun handleSave(isCopy: Boolean) {
@@ -318,6 +345,7 @@ class AddScheduleActivity : AppCompatActivity() {
             view.setOnClickListener {
                 selectedColor = Color.parseColor(color)
                 colorDot.background.mutate().setTint(selectedColor)
+                updateSaveButtonState()
                 popup.dismiss()
             }
         }

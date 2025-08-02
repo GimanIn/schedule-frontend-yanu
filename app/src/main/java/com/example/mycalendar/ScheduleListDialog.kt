@@ -247,7 +247,7 @@ class ScheduleListDialog(
                         memo = EMPTY_STRING,
                         location = EMPTY_STRING,
                         category = EMPTY_STRING,
-                        color = DEFAULT_COLOR,
+                        color = Color.parseColor("#4285F4"),
                         startDate = date,
                         endDate = date,
                         startTime = LocalTime.of(9, 0),

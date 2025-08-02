@@ -20,7 +20,7 @@
         <item name="android:textSize">14sp</item>
     </style>
 
-    <style name="ColorPickerCircle.Small">
+    <style name="ColorPickerCircle.Small" parent="Base.Theme.MyCalendar">
         <item name="android:layout_width">32dp</item>
         <item name="android:layout_height">32dp</item>
         <item name="android:layout_margin">4dp</item>

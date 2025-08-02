@@ -166,7 +166,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:autofillHints="text"
-                android:background="@drawable/edit_text_background"
+                android:background="@drawable/edittext_border_default"
                 android:hint="@string/schedule_hint"
                 android:inputType="text"
                 android:minHeight="48dp"
