@@ -158,6 +158,52 @@ class MainActivity : AppCompatActivity() {
         // 테스트 액티비티 자동 시작 (필요시 제거)
         // startActivity(Intent(this, AlarmTestActivity::class.java))
     }
+     fun shareSchedule(scheduleId: Long, receiverId: Long) {
+        RetrofitClient.apiService.shareSchedule(scheduleId, receiverId)
+            .enqueue(object : Callback<ApiResponse<String>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<String>>,
+                    response: Response<ApiResponse<String>>
+                ) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        Toast.makeText(this@MainActivity, "✅ 일정이 성공적으로 공유되었습니다", Toast.LENGTH_SHORT).show()
+                        Log.d("공유", "공유 성공: ${response.body()?.data}")
+                    } else {
+                        Toast.makeText(this@MainActivity, "❌ 공유 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
+                        Log.e("공유", "응답 실패: ${response.errorBody()?.string()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<String>>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "❌ 네트워크 오류: ${t.message}", Toast.LENGTH_SHORT).show()
+                    Log.e("공유", "네트워크 오류", t)
+                }
+            })
+    }
+
+    fun shareScheduleViaApi(schedule: Schedule) {
+        val scheduleId = schedule.id ?: return
+        val receiverId = 123L // 예시용 ID, 실제 동작에서는 로그인 사용자 또는 선택된 사용자로 설정해야 함
+
+        RetrofitClient.apiService.shareSchedule(scheduleId, receiverId)
+            .enqueue(object : Callback<ApiResponse<String>> {
+                override fun onResponse(call: Call<ApiResponse<String>>, response: Response<ApiResponse<String>>) {
+                    if (response.isSuccessful) {
+                        Log.d("Share", "공유 성공: ${response.body()?.data}")
+                    } else {
+                        Log.e("Share", "공유 실패: ${response.errorBody()?.string()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<ApiResponse<String>>, t: Throwable) {
+                    Log.e("Share", "네트워크 오류: ${t.message}")
+                }
+            })
+    }
+
+
+
+
 
     // MainActivity의 onCreate() 또는 onResume()에 추가
     private fun requestAlarmPermission() {
@@ -392,50 +438,49 @@ class MainActivity : AppCompatActivity() {
                 isAlarmScheduling = false
 
                 if (response.isSuccessful && response.body()?.success == true) {
-                    val todayAlarmResponse = response.body()
-                    if (todayAlarmResponse?.success == true) {
-                        val alarms = todayAlarmResponse.data.alarms  // 핵심 변경점!
+                    val todayAlarmResponse = response.body()!!
+                    val alarmDtos = todayAlarmResponse.data.alarms  // 🔧 한 번만 선언
 
-                        if (alarms.isNotEmpty()) {
-                            Log.d("AlarmSchedule", "서버에서 ${alarms.size}개 알람 조회됨")
+                    if (alarmDtos.isNotEmpty()) {
+                        Log.d("AlarmSchedule", "서버에서 ${alarmDtos.size}개 알람 조회됨")
 
-                            val successfulAlarmIds = mutableListOf<Long>()
-                            var successCount = 0
+                        val successfulAlarmIds = mutableListOf<Long>()
+                        var successCount = 0
 
-                            for (dto in alarms) {
-                                val alarm = dto.toAlarm()
-                                if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
-                                    successCount++
-                                    successfulAlarmIds.add(alarm.id)  // id는 nullable이 아니므로 ?. 제거
-                                }
+                        for (alarmDto in alarmDtos) {
+                            val alarm = Alarm(
+                                id = alarmDto.id ?: 0L,
+                                scheduleId = alarmDto.scheduleId ?: 0L,
+                                scheduleTitle = alarmDto.scheduleTitle ?: "",
+                                alarmTime = alarmDto.alarmTime ?: "",
+                                message = alarmDto.message ?: "",
+                                isSent = alarmDto.isSent ?: false,
+                                sentAt = alarmDto.sentAt,
+                                createdAt = alarmDto.createdAt ?: ""
+                            )
+                            if (AlarmManagerUtil.scheduleAlarm(this@MainActivity, alarm)) {
+                                successCount++
+                                successfulAlarmIds.add(alarm.id)  // 🔧 !! 제거
                             }
+                        }
 
-                            // 4. 성공한 알람 ID들 저장
-                            saveScheduledAlarmIds(successfulAlarmIds)
+                        saveScheduledAlarmIds(successfulAlarmIds)
 
-                            // 5. 오늘 날짜 저장 (다음에 중복 실행 방지)
-                            val today = LocalDate.now().toString()
-                            alarmPrefs.edit()
-                                .putString("last_scheduled_date", today)
-                                .apply()
-                            lastAlarmScheduleDate = today
+                        val today = LocalDate.now().toString()
+                        alarmPrefs.edit()
+                            .putString("last_scheduled_date", today)
+                            .apply()
+                        lastAlarmScheduleDate = today
 
-                            Log.d("AlarmSchedule", "✅ 오늘 알람 등록 완료: ${successCount}/${alarms.size}")
+                        Log.d("AlarmSchedule", "✅ 오늘 알람 등록 완료: ${successCount}/${alarmDtos.size}")  // 🔧 수정
 
-                            // 사용자에게 피드백
-                            if (successCount > 0) {
-                                Toast.makeText(this@MainActivity,
-                                    "오늘 알람 ${successCount}개가 설정되었습니다.",
-                                    Toast.LENGTH_SHORT).show()
-                            }
-                        } else {
-                            Log.d("AlarmSchedule", "오늘 예정된 알람이 없습니다.")
+                        if (successCount > 0) {
+                            Toast.makeText(this@MainActivity,
+                                "오늘 알람 ${successCount}개가 설정되었습니다.",
+                                Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        Log.e("AlarmSchedule", "❌ 서버 응답 실패: ${todayAlarmResponse?.message}")
-                        Toast.makeText(this@MainActivity,
-                            "알람 설정 중 오류가 발생했습니다.",
-                            Toast.LENGTH_SHORT).show()
+                        Log.d("AlarmSchedule", "오늘 예정된 알람이 없습니다.")
                     }
                 } else {
                     Log.e("AlarmSchedule", "❌ 알람 조회 실패: ${response.code()}")

@@ -16,7 +16,8 @@ class ScheduleListAdapter(
     private val onScheduleClicked: (Schedule) -> Unit,
     private val onEditClicked: (Schedule) -> Unit,
     private val onCopyClicked: (Schedule) -> Unit,
-    private val onDeleteClicked: (Schedule, Int) -> Unit
+    private val onDeleteClicked: (Schedule, Int) -> Unit,
+    private val onLinkShareClicked: (Schedule) -> Unit
 ) : RecyclerView.Adapter<ScheduleListAdapter.ScheduleViewHolder>() {
 
     companion object {
@@ -110,15 +111,12 @@ class ScheduleListAdapter(
                             sharePopupWindow.dismiss()
                             return@setOnClickListener
                         }
+                        onLinkShareClicked(schedule)
 
                         val deepLinkUri = Uri.Builder()
                             .scheme(SCHEME)
                             .authority(HOST)
-                            .appendQueryParameter("title", schedule.title)
-                            .appendQueryParameter("start", startForShare.toString())
-                            .appendQueryParameter("end", endForShare.toString())
-                            .appendQueryParameter("color", schedule.color.toString())
-                            .appendQueryParameter("memo", schedule.memo ?: "")
+                            .appendQueryParameter("id", schedule.id.toString())
                             .build()
 
                         val intent = Intent(Intent.ACTION_SEND).apply {

@@ -11,7 +11,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import com.example.mycalendar.model.AlarmListResponseDto
 
 interface ApiService {
 
@@ -44,7 +43,6 @@ interface ApiService {
     @POST("/api/schedules")
     fun createSchedule(@Body request: ScheduleRequest): Call<ApiResponse<ScheduleResponse>> // 일정 추가
 
-    // ✅ ✅ ✅ 여기에 추가하세요!
     @GET("/api/schedules/range")
     fun getSchedulesByDateRange(
         @Query("startDate") startDate: String,
@@ -94,42 +92,35 @@ interface ApiService {
         @Header("Authorization") refreshToken: String
     ): Call<ApiResponse<LoginResponse>> // AccessToken 갱신
 
-
     // 👤 마이페이지 관련 ------------------------------
 
-    // 1. 유저 정보 조회 (이름 + 아이디)
     @GET("/api/user/me")
-    fun getUserInfo(): Call<ApiResponse<UserInfoResponse>> // @Header 제거
+    fun getUserInfo(): Call<ApiResponse<UserInfoResponse>>
 
-    // 2. 비밀번호 변경
     @PUT("/api/user/change-password")
     fun changePassword(
-        @Body request: ChangePasswordRequest // @Header 제거
+        @Body request: ChangePasswordRequest
     ): Call<ApiResponse<Unit>>
 
-    // 3. 계정 삭제
-    // 3. 계정 삭제 - @Header 제거
     @DELETE("/api/user/deleted")
-    fun deleteAccount(): Call<ApiResponse<Unit>> // @Header 제거
+    fun deleteAccount(): Call<ApiResponse<Unit>>
 
-    @GET("/api/alarms/my/today")  // 엔드포인트 변경
-    fun getTodayAlarms(): Call<TodayAlarmResponse>
+    // 🔔 알람 관련 ----------------------------------
 
+    // 🔔 알람 관련 ----------------------------------
 
-    @PATCH("/api/alarms/{id}/mark-as-sent")
-    fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
+    @GET("/api/alarms/my/today")
+    fun getTodayAlarms(): Call<TodayAlarmResponse>  // 🔧 수정됨
 
-    // 🔔 전체 알람 조회 (동기화용)
     @GET("/api/alarms/my")
     fun getMyAlarms(): Call<ApiResponse<AlarmListResponseDto>>
 
     @GET("/api/alarms")
-    fun getAlarms(): Call<List<Alarm>>
+    fun getAllAlarms(): Call<List<AlarmResponseDto>>
 
-
-
+    @PATCH("/api/alarms/{id}/mark-as-sent")
+    fun markAlarmAsSent(@Path("id") alarmId: Long): Call<Void>
     // ✅ 딥링크로 공유된 일정 불러오기
     @GET("/api/schedules/shared/{id}")
     fun getSharedSchedule(@Path("id") id: Long): Call<ApiResponse<ScheduleResponse>>
-
 }

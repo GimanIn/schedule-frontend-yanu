@@ -101,6 +101,7 @@ class ScheduleListDialog(
     }
     // ✅ NEW: 딥링크로 들어온 일정 ID로 서버에서 일정 조회
     private fun fetchSharedSchedule(scheduleId: Long) {
+        // 🔧 수정: getPublicSchedule → getSchedule
         RetrofitClient.apiService.getSchedule(scheduleId).enqueue(object : Callback<ApiResponse<ScheduleResponse>> {
             override fun onResponse(
                 call: Call<ApiResponse<ScheduleResponse>>,
@@ -110,18 +111,14 @@ class ScheduleListDialog(
                     val scheduleResponse = response.body()!!.data!!
                     val schedule = ScheduleMapper.toSchedule(scheduleResponse)
 
-                    // ✅ 다이얼로그에서 일정 미리보기 표시
+                    // 다이얼로그에서 일정 미리보기 표시
                     AlertDialog.Builder(requireContext())
                         .setTitle("공유된 일정")
                         .setMessage("${schedule.title}\n${schedule.startDate} ${schedule.startTime}\n\n이 일정을 복사하시겠습니까?")
                         .setPositiveButton("복사하기") { _, _ ->
-                            // MainActivity에 일정 추가
                             (activity as? MainActivity)?.addScheduleToMap(schedule)
-
-                            // 현재 다이얼로그의 리스트에도 추가
                             dailySchedules.add(schedule)
                             scheduleListAdapter.notifyItemInserted(dailySchedules.size - 1)
-
                             Toast.makeText(context, "공유 일정을 복사했습니다.", Toast.LENGTH_SHORT).show()
                             onDataChanged()
                         }
@@ -137,6 +134,7 @@ class ScheduleListDialog(
             }
         })
     }
+
 
     // ⭐️ [수정 2] onViewCreated 추가: 뷰가 완전히 생성된 후 특정 상세보기를 바로 띄움
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -174,26 +172,31 @@ class ScheduleListDialog(
             dailySchedules,
             childFragmentManager,
             onScheduleClicked = { schedule -> showDetailView(schedule) },
-            // ✅ [수정] '편집' 클릭 시 MainActivity의 수정 함수를 호출하도록 변경
             onEditClicked = { schedule ->
                 (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = false)
                 dismiss()
             },
-            // ✅ [수정] '복사' 클릭 시 MainActivity의 복사 함수를 호출하도록 변경
             onCopyClicked = { schedule ->
                 (activity as? MainActivity)?.openEditScheduleActivity(schedule, isCopy = true)
                 dismiss()
             },
             onDeleteClicked = { schedule, position ->
-                // ✅ 서버 삭제 메서드 호출로 변경
                 (activity as? MainActivity)?.deleteScheduleFromServer(schedule) {
-                    // 성공 시 UI 업데이트
                     dailySchedules.removeAt(position)
                     scheduleListAdapter.notifyItemRemoved(position)
                     dataChanged = true
                 }
+            },
+            onLinkShareClicked = { schedule ->
+                schedule.id?.let { id ->
+                    (activity as? MainActivity)?.shareSchedule(id, receiverId= 15L)
+                } ?: run {
+                    Toast.makeText(requireContext(), "공유할 수 없는 일정입니다.", Toast.LENGTH_SHORT).show()
+                }
             }
         )
+
+
 
         scheduleListRecyclerView.layoutManager = LinearLayoutManager(context)
         scheduleListRecyclerView.adapter = scheduleListAdapter
@@ -584,18 +587,18 @@ class ScheduleListDialog(
 
 
     override fun onStart() {
-            super.onStart()
-            dialog?.window?.let { window ->
-                val displayMetrics = resources.displayMetrics
-                val height = (displayMetrics.heightPixels * 0.7).toInt()
-                window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
-                window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            }
+        super.onStart()
+        dialog?.window?.let { window ->
+            val displayMetrics = resources.displayMetrics
+            val height = (displayMetrics.heightPixels * 0.7).toInt()
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
     }
 
 
     override fun onDismiss(dialog: DialogInterface) {
-            super.onDismiss(dialog)
-            if (dataChanged) onDataChanged()
-        }
+        super.onDismiss(dialog)
+        if (dataChanged) onDataChanged()
     }
+}
