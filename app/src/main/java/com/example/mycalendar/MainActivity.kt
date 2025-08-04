@@ -10,6 +10,9 @@ import android.os.Build
 import android.os.Bundle
 import android.net.Uri
 import com.example.mycalendar.service.AlarmSync
+import com.example.mycalendar.service.NotificationHelper
+
+
 
 import android.provider.Settings
 import android.util.Log
@@ -53,6 +56,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.Locale
+import java.time.LocalDateTime
 
 class MainActivity : AppCompatActivity() {
 
@@ -63,6 +67,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var calendarAdapter: CalendarAdapter
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+    private var titleClickCount = 0
+    private var lastClickTime = 0L
+    private val CLICK_TIMEOUT = 3000L
 
     // 🎈 추가: 공휴일 데이터를 담을 Map
     private var holidayMap = mapOf<LocalDate, String>()
@@ -665,15 +672,22 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<ImageView>(R.id.searchButton).setOnClickListener { openSearchActivity() }
         findViewById<ImageButton>(R.id.addButton).setOnClickListener { handleAddButtonClick() }
+        setupToolbarTitleClickListener()
 
         // ✅ [두 번째 파일의 실제 AI 요약 기능 유지]
         findViewById<ImageButton>(R.id.aiButton)?.setOnClickListener {
+
+
+
             Log.d("AI_SUMMARY", "AI 요약 버튼 클릭됨")
 
-            val loadingDialog = AlertDialog.Builder(this)
-                .setMessage("AI가 일정을 요약하고 있습니다...")
-                .setCancelable(false)
-                .create()
+            val builder = AlertDialog.Builder(this)
+            val inflater = layoutInflater
+            builder.setView(inflater.inflate(R.layout.dialog_loading_ai_progress, null))
+            builder.setCancelable(false)
+            val loadingDialog = builder.create()
+            loadingDialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            loadingDialog.show()
 
             loadingDialog.show()
             val today = LocalDate.now().toString()
@@ -731,6 +745,8 @@ class MainActivity : AppCompatActivity() {
                 })
         }
 
+
+
         gestureDetector = GestureDetector(this, SwipeGestureListener())
         calendarRecyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
@@ -741,6 +757,161 @@ class MainActivity : AppCompatActivity() {
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
     }
+
+    private fun setupToolbarTitleClickListener() {
+        // 툴바 전체에 클릭 리스너 설정
+        toolbar.setOnClickListener {
+            handleTitleClick()
+        }
+
+        // 또는 더 정확하게 제목 부분만 클릭하고 싶다면
+        // (하지만 위의 방법이 더 쉬워요)
+    }
+
+    // MainActivity.kt - 실제 알림 설정된 일정 체크 기능
+
+    private fun handleTitleClick() {
+        val currentTime = System.currentTimeMillis()
+
+        if (currentTime - lastClickTime > CLICK_TIMEOUT) {
+            titleClickCount = 0
+        }
+
+        titleClickCount++
+        lastClickTime = currentTime
+
+        when (titleClickCount) {
+
+            5 -> {
+                // 🔔 실제 알림 설정된 일정들 체크!
+                checkImportantAlarms()
+                titleClickCount = 0
+            }
+        }
+    }
+
+    // 🔔 실제 알림 설정된 일정들을 체크하는 메서드
+    private fun checkImportantAlarms() {
+        val today = LocalDate.now()
+        val tomorrow = today.plusDays(1)
+
+        // 오늘과 내일의 알림 설정된 일정들 찾기
+        val todayAlarmSchedules = findAlarmSchedules(today)
+        val tomorrowAlarmSchedules = findAlarmSchedules(tomorrow)
+
+        val totalAlarmCount = todayAlarmSchedules.size + tomorrowAlarmSchedules.size
+
+        if (totalAlarmCount == 0) {
+            // 알림 설정된 일정이 없는 경우
+            NotificationHelper.showSimpleNotification(
+                this,
+                "😌 알림 일정 없음",
+                "오늘과 내일 알림 설정된 중요한 일정이 없어요. 여유로운 시간을 보내세요! 🌿"
+            )
+            Toast.makeText(this, "📱 중요한 알림이 없어요!", Toast.LENGTH_LONG).show()
+        } else {
+            // 알림 설정된 일정이 있는 경우
+            val message = buildAlarmMessage(todayAlarmSchedules, tomorrowAlarmSchedules)
+
+            NotificationHelper.showImportantNotification(
+                this,
+                "⚠️ 중요한 일정 알림!",
+                message
+            )
+
+            Toast.makeText(this, "🔔 중요한 알림이 ${totalAlarmCount}건 있어요!", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // 🔔 특정 날짜의 알림 설정된 일정들을 찾는 메서드
+    private fun findAlarmSchedules(date: LocalDate): List<Schedule> {
+        val daySchedules = schedules[date] ?: emptyList()
+
+        return daySchedules.filter { schedule ->
+            // 알림이 설정되어 있고, 아직 시간이 지나지 않은 일정들
+            schedule.alarmOn && !isSchedulePassed(schedule, date)
+        }
+    }
+
+    // 🔔 일정이 이미 지났는지 확인하는 메서드
+    private fun isSchedulePassed(schedule: Schedule, scheduleDate: LocalDate): Boolean {
+        val now = LocalDateTime.now()
+        val today = LocalDate.now()
+
+        return if (scheduleDate.isBefore(today)) {
+            // 과거 날짜면 무조건 지남
+            true
+        } else if (scheduleDate.isEqual(today)) {
+            // 오늘 일정이면 시간 비교
+            schedule.startTime?.let { startTime ->
+                val scheduleDateTime = LocalDateTime.of(scheduleDate, startTime)
+                now.isAfter(scheduleDateTime)
+            } ?: false // 종일 일정은 아직 안 지남
+        } else {
+            // 미래 날짜면 아직 안 지남
+            false
+        }
+    }
+
+    // 🔔 알림 메시지 생성하는 메서드
+    private fun buildAlarmMessage(todaySchedules: List<Schedule>, tomorrowSchedules: List<Schedule>): String {
+        val message = StringBuilder()
+
+        if (todaySchedules.isNotEmpty()) {
+            message.append("📅 오늘 중요한 일정:\n")
+            todaySchedules.take(3).forEach { schedule ->
+                val timeText = schedule.startTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "종일"
+                message.append("• $timeText ${schedule.title}\n")
+            }
+            if (todaySchedules.size > 3) {
+                message.append("• 외 ${todaySchedules.size - 3}건 더\n")
+            }
+            message.append("\n")
+        }
+
+        if (tomorrowSchedules.isNotEmpty()) {
+            message.append("📅 내일 중요한 일정:\n")
+            tomorrowSchedules.take(2).forEach { schedule ->
+                val timeText = schedule.startTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "종일"
+                message.append("• $timeText ${schedule.title}\n")
+            }
+            if (tomorrowSchedules.size > 2) {
+                message.append("• 외 ${tomorrowSchedules.size - 2}건 더\n")
+            }
+        }
+
+        message.append("\n⏰ 알림을 놓치지 마세요!")
+
+        return message.toString()
+    }
+
+    // 🔔 이번 주 전체 알림 일정 체크하는 메서드 (선택사항)
+    private fun checkWeeklyAlarms() {
+        val today = LocalDate.now()
+        val thisWeekAlarms = mutableListOf<Pair<LocalDate, Schedule>>()
+
+        // 이번 주 7일간 체크
+        for (i in 0..6) {
+            val checkDate = today.plusDays(i.toLong())
+            val alarmSchedules = findAlarmSchedules(checkDate)
+            alarmSchedules.forEach { schedule ->
+                thisWeekAlarms.add(Pair(checkDate, schedule))
+            }
+        }
+
+        if (thisWeekAlarms.isNotEmpty()) {
+            val weekMessage = "📅 이번 주 알림 설정된 일정이 ${thisWeekAlarms.size}건 있습니다.\n\n" +
+                    "가장 가까운 일정:\n" +
+                    "• ${thisWeekAlarms.first().second.title}"
+
+            NotificationHelper.showImportantNotification(
+                this,
+                "📊 이번 주 중요 일정",
+                weekMessage
+            )
+        }
+    }
+
 
     // ✅ [첫 번째 파일의 정교한 권한 체크 로직]
     private fun checkPermissionAndLoadContent() {

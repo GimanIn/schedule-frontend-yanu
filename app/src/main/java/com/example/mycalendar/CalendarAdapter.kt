@@ -267,6 +267,13 @@ class CalendarAdapter(
             val rightMargin = if (isEndPiece) 4 else 0
             layoutParams.setMargins(leftMargin, 0, rightMargin, 2)
             this.layoutParams = layoutParams
+
+            if (schedule.alarmOn) {
+                // TextView의 오른쪽(End)에 아이콘을 설정합니다. (Left, Top, Right, Bottom)
+                setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_alarm_indicator, 0)
+                // 텍스트와 아이콘 사이의 간격을 줍니다.
+                compoundDrawablePadding = 8
+            }
         }
 
         holder.scheduleContainer.addView(scheduleView)
